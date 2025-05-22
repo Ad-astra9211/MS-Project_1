@@ -1,0 +1,11 @@
+# 민감 데이터 제외
+data/raw/*
+data/processed/*
+
+# Python
+__pycache__/
+*.pyc
+.env
+
+# OS
+.DS_Store
