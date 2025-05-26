@@ -8,6 +8,8 @@
 **Databricks, PySpark, MLflow, Git** 기반으로 대규모 데이터 처리와 협업을 구조화하며, 보안과 실험 재현성을 중시합니다.
 
 ---
+## Databricks에서 raw-data 접근 경로(가상경로)
+  * /mnt/raw-data/[폴더명]/[파일이름].csv
 
 ## 📁 프로젝트 디렉토리 설명 및 보안 가이드
 
