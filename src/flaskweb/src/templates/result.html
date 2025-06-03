@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>추천 결과</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>추천된 펀드 목록</h1>
+
+  {% if funds %}
+    <ul>
+    {% for fund in funds %}
+      <li>
+        <a href="/fund/{{ fund['펀드코드'] }}">
+          {{ fund['펀드명'] }}
+        </a> – 수익률 {{ fund['펀드성과정보_1년'] }}%, 위험등급 {{ fund['투자위험등급'] }}
+      </li>
+    {% endfor %}
+    </ul>
+  {% else %}
+    <p>추천 결과가 없습니다. 다시 선택해보세요.</p>
+  {% endif %}
+
+  <a href="/">← 처음으로</a>
+</body>
+</html>

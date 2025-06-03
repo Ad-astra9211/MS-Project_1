@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>펀드 추천 시스템</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>나에게 맞는 펀드 추천</h1>
+  <form action="/recommend" method="POST">
+    <label>직업군</label>
+    <select name="occupation">
+      <option value="직장인">직장인</option>
+      <option value="자영업자">자영업자</option>
+      <option value="공무원">공무원</option>
+      <option value="학생">학생</option>
+    </select>
+
+    <label>위험 선호도</label>
+    <select name="risk">
+      <option value="1">1 (매우 보수적)</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5 (매우 공격적)</option>
+    </select>
+
+    <label>선호 테마 (복수 선택 가능)</label><br>
+    <input type="checkbox" name="theme" value="성장주"> 성장주
+    <input type="checkbox" name="theme" value="배당주"> 배당주
+    <input type="checkbox" name="theme" value="ESG(사회책임투자형)"> ESG
+    <input type="checkbox" name="theme" value="자산배분"> 자산배분
+    <input type="checkbox" name="theme" value="4차산업"> 4차산업
+    <br><br>
+
+    <button type="submit">추천받기</button>
+  </form>
+</body>
+</html>

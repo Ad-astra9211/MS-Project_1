@@ -3,6 +3,9 @@ data/raw/*
 data/SecretAcessMountCode-storage.ipynb
 data/processed/*
 
+#.env
+C:\Users\EL033\dataschool\team1\funds_reco\src\flaskweb\src\.env
+
 # Python
 __pycache__/
 *.pyc

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ fund['펀드명'] }} 상세정보</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>{{ fund['펀드명'] }}</h1>
+  <p><strong>운용사:</strong> {{ fund['운용사명'] }}</p>
+  <p><strong>설정일:</strong> {{ fund['설정일'] }}</p>
+  <p><strong>투자전략:</strong> {{ fund['투자전략'] }}</p>
+
+  <h2>성과 정보</h2>
+  <p>1년 수익률: {{ perf['펀드성과정보_1년'] }}%</p>
+  <p>샤프지수: {{ perf['펀드수정샤프(연환산)_1년'] }}</p>
+  <p>순자산: {{ perf['순자산'] }}</p>
+
+  <h2>위험등급</h2>
+  <p>투자위험등급: {{ risk['투자위험등급'] }}</p>
+  <p>판매위험등급: {{ risk['판매위험등급'] }}</p>
+
+  <h2>펀드 테마</h2>
+  <ul>
+    {% for key, val in tags.items() if key != '펀드코드' and val > 0.5 %}
+      <li>{{ key }}</li>
+    {% endfor %}
+  </ul>
+
+  <a href="/">← 추천 다시 받기</a>
+</body>
+</html>

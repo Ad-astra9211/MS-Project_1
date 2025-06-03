@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}펀드 대시보드{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  .dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    grid-gap: 20px;
+  }
+  .card {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+  }
+  .card-header {
+    font-weight: 700;
+    color: #004085;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+  }
+  .chart-large {
+    grid-column: span 8;
+  }
+  .chart-small {
+    grid-column: span 4;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  th {
+    background-color: #004085;
+    color: white;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid">
+  <!-- 상단 통계 카드들 -->
+  <div class="card chart-small">
+    <div class="card-header">총 펀드 수</div>
+    <div style="font-size: 2rem; color: #17a2b8;">{{ orders_data["values"] | sum }}</div>
+    <small style="color: green;">▲ 최근 월별 신규 설정 기준</small>
+  </div>
+  <div class="card chart-small">
+    <div class="card-header">월별 신규 펀드</div>
+    <div style="font-size: 2rem; color: #ffc107;">{{ orders_data["values"][-1] if orders_data["values"] else 0 }}</div>
+    <small style="color: green;">최근 월 신규 설정</small>
+  </div>
+  <div class="card chart-small">
+    <div class="card-header">월별 펀드 성과 합계</div>
+    <div style="font-size: 2rem; color: #28a745;">{{ sales_data["values"][-1] if sales_data["values"] else 0 }}</div>
+    <small style="color: green;">최근 월 기준</small>
+  </div>
+  <div class="card chart-small">
+    <div class="card-header">주요 테마 비중</div>
+    <div style="font-size: 2rem; color: #007bff;">
+      {% if social_traffic %}
+        {{ social_traffic[0].channel }} {{ social_traffic[0].percent }}%
+      {% endif %}
+    </div>
+    <small style="color: green;">가장 높은 테마</small>
+  </div>
+
+  <!-- 라인 차트 -->
+  <div class="card chart-large">
+    <div class="card-header">월별 펀드 성과 추이</div>
+    <canvas id="salesLineChart" height="150"></canvas>
+  </div>
+
+  <!-- 바 차트 -->
+  <div class="card chart-small">
+    <div class="card-header">월별 신규 펀드 수</div>
+    <canvas id="ordersBarChart" height="150"></canvas>
+  </div>
+
+  <!-- 데이터 테이블 -->
+  <div class="card chart-large">
+    <div class="card-header">펀드별 방문 현황(예시)</div>
+    <table>
+      <thead>
+        <tr>
+          <th>펀드명</th>
+          <th>방문자 수</th>
+          <th>고유 사용자 수</th>
+          <th>이탈률</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for page in page_visits %}
+        <tr>
+          <td>{{ page.name }}</td>
+          <td>{{ page.visitors }}</td>
+          <td>{{ page.unique_users }}</td>
+          <td>{{ page.bounce_rate }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card chart-small">
+    <div class="card-header">주요 테마별 펀드 비중</div>
+    <table>
+      <thead>
+        <tr>
+          <th>테마</th>
+          <th>펀드 수</th>
+          <th>비율</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for social in social_traffic %}
+        <tr>
+          <td>{{ social.channel }}</td>
+          <td>{{ social.visitors }}</td>
+          <td>{{ social.percent }}%</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  const salesLineCtx = document.getElementById('salesLineChart').getContext('2d');
+  const salesLineChart = new Chart(salesLineCtx, {
+    type: 'line',
+    data: {
+      labels: {{ sales_data["months"] | tojson }},
+      datasets: [{
+        label: '월별 펀드 성과 합계',
+        data: {{ sales_data["values"] | tojson }},
+        backgroundColor: 'rgba(0,123,255,0.2)',
+        borderColor: 'rgba(0,123,255,1)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3,
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+
+  const ordersBarCtx = document.getElementById('ordersBarChart').getContext('2d');
+  const ordersBarChart = new Chart(ordersBarCtx, {
+    type: 'bar',
+    data: {
+      labels: {{ orders_data["months"] | tojson }},
+      datasets: [{
+        label: '월별 신규 펀드 수',
+        data: {{ orders_data["values"] | tojson }},
+        backgroundColor: 'rgba(255,99,132,0.7)'
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+</script>
+{% endblock %}
