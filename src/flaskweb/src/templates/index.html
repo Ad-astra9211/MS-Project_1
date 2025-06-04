@@ -4,35 +4,59 @@
   <meta charset="UTF-8">
   <title>펀드 추천 시스템</title>
   <link rel="stylesheet" href="/static/index_style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
 <body>
-  <!-- 상단 오른쪽 버튼 -->
-  <a href="/dashboard" class="btn btn-dashboard top-right-btn">고객 정보 분석 이동</a>
-  <a href="/db_dash" class="btn btn-dashboard top-right-btn">dataBricks dashboard</a>
+  <!-- 상단 헤더 바 -->
+  <header class="main-header">
+    <div class="header-left">
+      <i class="fa-solid fa-chart-line logo-icon"></i>
+      <span class="logo-text">FUND INSIGHT</span>
+    </div>
+    <nav class="header-right">
+      <a href="/dashboard" class="btn btn-dashboard" title="고객 정보 분석 대시보드">
+        <i class="fa-solid fa-user-chart"></i> 고객 정보 분석
+      </a>
+      <a href="/db_dash" class="btn btn-dashboard" title="Databricks 대시보드">
+        <i class="fa-brands fa-database"></i> Databricks Dashboard
+      </a>
+    </nav>
+  </header>
 
-  <div class="container">
-    <h1>나에게 맞는 펀드 추천</h1>
-    <form action="/recommend" method="POST" class="recommend-form">
-      <label>직업군</label>
-      <select name="occupation">
-        <option value="클러스터링1">클러스터링1</option>
-        <option value="클러스터링2">클러스터링2</option>
-        <option value="클러스터링3">클러스터링3</option>
-        <option value="클러스터링4">클러스터링4</option>
-      </select>
+  <main>
+    <div class="container">
+      <h1>나에게 맞는 펀드 추천</h1>
+      <form action="/recommend" method="POST" class="recommend-form" autocomplete="off">
+        <div class="form-section">
+          <label for="occupation">직업군 <i class="fa-solid fa-circle-info" title="직업군에 따라 맞춤형 추천이 제공됩니다."></i></label>
+          <select name="occupation" id="occupation" required>
+            <option value="" disabled selected>직업군 선택</option>
+            <option value="클러스터링1">클러스터링1</option>
+            <option value="클러스터링2">클러스터링2</option>
+            <option value="클러스터링3">클러스터링3</option>
+            <option value="클러스터링4">클러스터링4</option>
+          </select>
+        </div>
 
-      <label>위험 선호도</label>
-      <select name="risk">
-        <option value="1">1 (매우 보수적)</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-        <option value="6">6 (매우 공격적)</option>
-      </select>
+        <div class="form-section">
+          <label for="risk">위험 선호도 <i class="fa-solid fa-circle-info" title="1: 매우 보수적 ~ 6: 매우 공격적"></i></label>
+          <select name="risk" id="risk" required>
+            <option value="" disabled selected>위험 선호도 선택</option>
+            <option value="1">1 (매우 보수적)</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6 (매우 공격적)</option>
+          </select>
+        </div>
 
-      <button type="submit" class="btn btn-recommend">추천받기</button>
-    </form>
-  </div>
+        <button type="submit" class="btn btn-recommend">
+          <i class="fa-solid fa-magnifying-glass-chart"></i> 추천받기
+        </button>
+      </form>
+    </div>
+  </main>
 </body>
 </html>
