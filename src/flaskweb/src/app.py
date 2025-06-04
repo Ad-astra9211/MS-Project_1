@@ -28,15 +28,26 @@ def home():
     df = run_query("SELECT * FROM funds_data.funds_info LIMIT 10")
     return render_template('index.html', tables=df.to_html(classes='data'))
 
+
 @app.route('/recommend', methods=['POST'])
 def recommend():
     try:
-        occupation = request.form['occupation']
-        risk_preference = request.form['risk']
+        occupation = request.form.get('occupation')
+        risk_preference = int(request.form.get('risk'))
         themes = request.form.getlist('theme')
+        keyword = request.form.get('search_query', '')
+        sort_option = request.form.get('sort_option', '추천랭킹')
+
+        sort_columns = {
+            '추천랭킹': 'k.`추천랭킹`',
+            '위험등급': 'r.`투자위험등급`'
+        }
+        sort_column = sort_columns.get(sort_option, 'k.`추천랭킹`')
 
         query = '''
-        SELECT i.`펀드코드`, i.`펀드명`, r.`투자위험등급`, f.`운용보수`, p.`펀드성과정보_1년`, k.`추천랭킹`
+        SELECT i.`펀드코드`, i.`펀드명`, r.`투자위험등급`, f.`운용보수`, p.`펀드성과정보_1년`, k.`추천랭킹`, i.`운용사명`,
+       t.`가치주`, t.`성장주`, t.`중소형주`, t.`글로벌`, t.`자산배분`, t.`4차산업`, t.`ESG`, t.`배당주`, t.`FoFs`, t.`퇴직연금`,
+       t.`고난도금융상품`, t.`절대수익추구`, t.`레버리지`, t.`퀀트`,k.`최종점수`,k.`추천랭킹`
         FROM funds_data.funds_info i
         JOIN funds_data.fund_risk_grades r ON i.`펀드코드` = r.`펀드코드`
         JOIN funds_data.fund_performance p ON i.`펀드코드` = p.`펀드코드`
@@ -46,20 +57,33 @@ def recommend():
         WHERE r.`투자위험등급` <= ?
         '''
 
+        params = [risk_preference]
+
+        valid_themes = {'가치주', '성장주', '중소형주', '글로벌', '자산배분', '4차산업', 'ESG', '배당주', 'FoFs', '퇴직연금',
+                        '고난도금융상품', '절대수익추구', '레버리지', '퀀트'}
+
+
         for theme in themes:
-            query += f" AND t.`{theme}` > 0.5"
+            if theme in valid_themes:
+                query += f" AND t.`{theme}` > 0.5"
 
-        query += " ORDER BY k.`추천랭킹` ASC LIMIT 20"
+        if keyword:
+            query += " AND i.`펀드명` LIKE ?"
+            params.append(f'%{keyword}%')
+            
+            
+        query += f" ORDER BY {sort_column}"
 
-        df = run_query(query, (risk_preference,))
+        df = run_query(query, params)
         funds = df.to_dict(orient='records')
 
         return render_template('result.html', funds=funds)
 
     except Exception as e:
-        # 에러 로그 출력 및 에러 페이지 렌더링(또는 메시지 반환)
         app.logger.error(f"Error in recommend(): {e}")
         return "추천 결과 처리 중 오류가 발생했습니다.", 500
+
+
 
 @app.route('/fund/<code>')
 def fund_detail(code):
@@ -91,7 +115,7 @@ def dashboard():
         "values": df_orders["num_funds"].tolist()
     }
 
-    # 2. 월별 펀드 성과 합계(sales_data): 임의로 펀드성과정보_1년의 월별 합계
+    # 2. 
     sales_sql = """
     SELECT DATE_FORMAT(i.`설정일`, 'yyyy-MM') AS month, SUM(p.`펀드성과정보_1년`) AS total_sales
     FROM funds_data.fund_performance p
@@ -108,25 +132,34 @@ def dashboard():
     # 3. 페이지 방문 현황(page_visits): 펀드별 임의 집계 (순자산 등 활용)
     page_visits_sql = """
         SELECT i.`펀드명` AS name,
-               CAST(f.`순자산`/1000000 AS INT) AS visitors,
-               CAST(f.`순자산`/2000000 AS INT) AS unique_users,
+               CAST(p.`순자산`/1000000 AS INT) AS visitors,
+               CAST(p.`순자산`/2000000 AS INT) AS unique_users,
                ROUND(100 - MOD(p.`펀드성과정보_1년`, 100), 2) AS bounce_rate
         FROM funds_data.funds_info i
         JOIN funds_data.fund_performance p ON i.`펀드코드` = p.`펀드코드`
-        JOIN funds_data.fund_performance f ON i.`펀드코드` = f.`펀드코드`
         LIMIT 10
     """
     df_page_visits = run_query(page_visits_sql)
     page_visits = df_page_visits.to_dict(orient='records')
 
     # 4. 소셜 트래픽(social_traffic): 주요 테마별 합계 및 비율
-    tag_cols = ['가치주', '성장주', 'ESG', '글로벌']
+    tag_cols = ['가치주', '성장주', '중소형주', '글로벌', '자산배분', '4차산업', 'ESG', '배당주', 'FoFs', '퇴직연금', '고난도금융상품', '절대수익추구', '레버리지', '퀀트']
     tag_sum_sql = f"""
         SELECT
-            SUM(`가치주`) AS value1,
-            SUM(`성장주`) AS value2,
-            SUM(`ESG`) AS value3,
-            SUM(`글로벌`) AS value4
+            SUM(`가치주`) AS `가치주`,
+            SUM(`성장주`) AS `성장주`,
+            SUM(`중소형주`) AS `중소형주`,
+            SUM(`글로벌`) AS `글로벌`,
+            SUM(`자산배분`) AS `자산배분`,
+            SUM(`4차산업`) AS `4차산업`,
+            SUM(`ESG`) AS `ESG`,
+            SUM(`배당주`) AS `배당주`,
+            SUM(`FoFs`) AS `FoFs`,
+            SUM(`퇴직연금`) AS `퇴직연금`,
+            SUM(`고난도금융상품`) AS `고난도금융상품`,
+            SUM(`절대수익추구`) AS `절대수익추구`,
+            SUM(`레버리지`) AS `레버리지`,
+            SUM(`퀀트`) AS `퀀트`
         FROM funds_data.fund_tags
     """
     df_tags = run_query(tag_sum_sql)
@@ -148,6 +181,12 @@ def dashboard():
         page_visits=page_visits,
         social_traffic=social_traffic
     )
+
+@app.route('/db_dash')
+def databricks_dashboard():
+    # 실제 대시보드 임베드 URL로 교체하세요
+    dashboard_url = "https://adb-625348768188018.18.azuredatabricks.net/dashboardsv3/01f03d3450ba1580b668837389ccfdde/published?o=625348768188018&f_a6f4c99b%7Eb0d634d7=PR73T7JQK435%2CPRBK5R8LK175%2CPRBK5R8LKK15%2CPRBK5R8LK14K"
+    return render_template('db_dash.html', dashboard_url=dashboard_url)
 
 
 

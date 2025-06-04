@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Databricks 대시보드</title>
+  <style>
+    body {
+      background: #f6f8fa;
+      margin: 0;
+      font-family: 'Noto Sans KR', Arial, sans-serif;
+    }
+    .dashboard-container {
+      max-width: 1200px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.09);
+      padding: 32px;
+    }
+    iframe {
+      width: 100%;
+      height: 700px;
+      border: none;
+      border-radius: 12px;
+      background: #fff;
+    }
+    h1 {
+      color: #34495e;
+      text-align: center;
+      margin-bottom: 32px;
+      font-size: 2rem;
+    }
+  </style>
+</head>
+<body>
+    <div>
+        <a href="/" class="home-btn">home</a>
+    </div>
+  <div class="dashboard-container">
+    <h1>Databricks 대시보드</h1>
+    <iframe
+    src="https://adb-625348768188018.18.azuredatabricks.net/embed/dashboardsv3/01f03d3450ba1580b668837389ccfdde?o=625348768188018"
+    width="100%"
+    height="600"
+    frameborder="0">
+    </iframe>
+  </div>
+</body>
+</html>

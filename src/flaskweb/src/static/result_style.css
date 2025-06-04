@@ -1,0 +1,155 @@
+/* 기본 전체 배경과 폰트 */
+body {
+  background-color: #f5f8fa;
+  font-family: 'Noto Sans KR', 'Arial', sans-serif;
+  color: #333;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 컨테이너 상단 제목 */
+h2 {
+  color: #003366;
+  font-weight: 700;
+  border-bottom: 2px solid #0055a5;
+  padding-bottom: 8px;
+  margin-bottom: 30px;
+}
+
+/* 검색창 */
+#searchInput {
+  border: 1.5px solid #0055a5;
+  border-radius: 6px;
+  padding: 10px 15px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+}
+
+#searchInput:focus {
+  border-color: #003366;
+  box-shadow: 0 0 8px rgba(0, 85, 165, 0.4);
+  outline: none;
+}
+
+/* 키워드 필터 버튼 스타일 */
+#keywordButtons .btn {
+  border: 1.5px solid #0074d9;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0074d9;
+  background-color: #fff;
+  transition: all 0.3s ease;
+  user-select: none;
+}
+
+#keywordButtons .btn:hover {
+  background-color: #0074d9;
+  color: #fff;
+}
+
+#keywordButtons .btn.active {
+  background-color: #003366;
+  border-color: #003366;
+  color: #fff !important;
+  box-shadow: 0 0 6px rgba(0, 51, 102, 0.7);
+}
+
+/* 정렬 버튼 */
+.mb-4 > .btn {
+  min-width: 140px;
+  margin-right: 10px;
+  font-weight: 600;
+  border-radius: 30px;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.mb-4 > .btn.btn-outline-primary:hover {
+  background-color: #0055a5;
+  color: #fff;
+  border-color: #0055a5;
+}
+
+.mb-4 > .btn.btn-outline-secondary:hover {
+  background-color: #003366;
+  color: #fff;
+  border-color: #003366;
+}
+
+.mb-4 > .btn.active {
+  background-color: #003366;
+  border-color: #003366;
+  color: #fff !important;
+  box-shadow: 0 0 6px rgba(0, 51, 102, 0.7);
+}
+
+
+/* 카드 스타일 */
+.card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: none;
+  transition: box-shadow 0.3s ease;
+  background-color: #ffffff;
+  cursor: default;
+}
+
+.card:hover {
+  box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+}
+
+.card-body {
+  padding: 20px;
+}
+
+/* 카드 제목 */
+.card-title a {
+  color: #004080;
+  font-weight: 700;
+  font-size: 1.1rem;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.card-title a:hover {
+  color: #0074d9;
+  text-decoration: underline;
+}
+
+/* 카드 배지 스타일 */
+.card-text .badge {
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+  display: inline-block;
+  padding: 6px 10px;
+  border-radius: 12px;
+  user-select: none;
+}
+
+.bg-success {
+  background-color: #28a745 !important;
+}
+
+.bg-rank {
+  background-color: #2cbec1 !important;
+}
+
+.bg-warning {
+  background-color: #ffc107 !important;
+  color: #212529 !important;
+}
+
+/* 카드 작은 텍스트 (운용사 등) */
+.card-text small {
+  color: #666;
+  font-size: 0.85rem;
+}
+
+/* 반응형 간격 조절 */
+@media (max-width: 768px) {
+  .card {
+    margin-bottom: 25px;
+  }
+}

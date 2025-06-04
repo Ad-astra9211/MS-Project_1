@@ -133,14 +133,19 @@
 </div>
 
 <script>
+  const salesMonths = {{ sales_data["months"] | tojson | safe }};
+  const salesValues = {{ sales_data["values"] | tojson | safe }};
+  const ordersMonths = {{ orders_data["months"] | tojson | safe }};
+  const ordersValues = {{ orders_data["values"] | tojson | safe }};
+
   const salesLineCtx = document.getElementById('salesLineChart').getContext('2d');
   const salesLineChart = new Chart(salesLineCtx, {
     type: 'line',
     data: {
-      labels: {{ sales_data["months"] | tojson }},
+      labels: salesMonths,
       datasets: [{
         label: '월별 펀드 성과 합계',
-        data: {{ sales_data["values"] | tojson }},
+        data: salesValues,
         backgroundColor: 'rgba(0,123,255,0.2)',
         borderColor: 'rgba(0,123,255,1)',
         borderWidth: 2,
@@ -161,10 +166,10 @@
   const ordersBarChart = new Chart(ordersBarCtx, {
     type: 'bar',
     data: {
-      labels: {{ orders_data["months"] | tojson }},
+      labels: ordersMonths,
       datasets: [{
         label: '월별 신규 펀드 수',
-        data: {{ orders_data["values"] | tojson }},
+        data: ordersValues,
         backgroundColor: 'rgba(255,99,132,0.7)'
       }]
     },
@@ -176,4 +181,5 @@
     }
   });
 </script>
+
 {% endblock %}
