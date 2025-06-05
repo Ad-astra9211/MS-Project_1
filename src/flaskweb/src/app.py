@@ -23,6 +23,18 @@ def run_query(query, params=None):
             df = pd.DataFrame(result, columns=columns)
     return df
 
+# 위험도 숫자 → 텍스트 변환 함수
+def risk_label(risk):
+    risk_map = {
+        1: "1 (매우 공격적)",
+        2: "2",
+        3: "3",
+        4: "4",
+        5: "5",
+        6: "6 (매우 안정적)"
+    }
+    return risk_map.get(int(risk), str(risk)) if risk else None
+
 # 클러스터별 기본 필터 조건
 cluster_fund_filter_conditions = {
     0: {  # 오래된 VIP & 활동성 높은 고객
@@ -182,12 +194,16 @@ def recommend():
         df = run_query(query, params)
         funds = df.to_dict(orient='records')
 
+        
+        risk_text = risk_label(risk_preference) if risk_preference else None
+
         # result.html에 preselected_themes, preselected_risk 전달
         return render_template(
             'result.html',
             funds=funds,
             preselected_themes=themes,
             preselected_risk=risk_preference,
+            risk_text=risk_text,
             theme_keywords=theme_keywords,
             applied_filters=applied_filters  # 화면 표시용 필터 전달
         )

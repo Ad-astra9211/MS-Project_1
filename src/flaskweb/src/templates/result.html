@@ -38,18 +38,28 @@
     </div>
 
     <!-- 위험등급 필터 -->
-    <div class="mb-4">
-      <strong>위험 선호도:</strong>
-      <select id="riskSelect" class="form-select" style="width:140px; display:inline-block;">
-        <option value="">전체</option>
-        <option value="1">1 (매우 공격적)</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-        <option value="6">6 (매우 안정적적)</option>
-      </select>
-    </div>
+    <div class="mb-4 d-flex align-items-center gap-3 flex-wrap">
+  <div>
+    <strong>위험 선호도:</strong>
+    <select id="riskSelect" class="form-select d-inline-block" style="width:140px; display:inline-block;">
+      <option value="">전체</option>
+      <option value="1" {% if preselected_risk == 1 %}selected{% endif %}>1 (매우 공격적)</option>
+      <option value="2" {% if preselected_risk == 2 %}selected{% endif %}>2</option>
+      <option value="3" {% if preselected_risk == 3 %}selected{% endif %}>3</option>
+      <option value="4" {% if preselected_risk == 4 %}selected{% endif %}>4</option>
+      <option value="5" {% if preselected_risk == 5 %}selected{% endif %}>5</option>
+      <option value="6" {% if preselected_risk == 6 %}selected{% endif %}>6 (매우 안정적)</option>
+    </select>
+  </div>
+  <div class="text-primary small fw-semibold" style="min-width:220px;">
+    {% if risk_text %}
+      회원의 추천 위험도: <strong>{{ risk_text }}</strong>
+      <span class="text-secondary">(1에 가까울수록 위험)</span>
+    {% else %}
+      <span class="text-secondary">위험도를 선택해주세요.</span>
+    {% endif %}
+  </div>
+</div>
 
     <!-- 정렬 버튼 -->
     <div class="mb-4">
@@ -74,9 +84,10 @@
     let filteredFunds = [...funds];
     let activeKeywords = {{ preselected_themes | tojson }};
     let currentRisk = "{{ preselected_risk }}";
+    let userRisk = "{{ preselected_risk }}";
     const keywords = {{ theme_keywords | tojson }};
 
-    console.log('preselected_themes:', activeKeywords);
+    // console.log('preselected_risk:', currentRisk);
 
     // 키워드 버튼 동적 생성 + preselected 적용
     const keywordButtonsContainer = document.getElementById('keywordButtons');
