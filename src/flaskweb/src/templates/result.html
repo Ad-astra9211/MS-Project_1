@@ -6,51 +6,25 @@
   <title>펀드 추천 시스템</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='result_style.css') }}">
-  <style>
-    .home-btn {
-      position: fixed;
-      top: 10px;
-      left: 20px;
-      z-index: 6000;
-      font-size: 0.9rem;
-      padding: 8px 16px;
-      border-radius: 20px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
-      background: linear-gradient(90deg, #5e72e4, #825ee4);
-      color: #fff;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
-    }
-    .home-btn:hover {
-      background: linear-gradient(90deg, #825ee4, #5e72e4);
-      box-shadow: 0 6px 20px rgba(130, 94, 228, 0.2);
-      transform: translateY(-2px);
-    }
-    .btn.active {
-      background: #5e72e4 !important;
-      color: #fff !important;
-      border-color: #5e72e4 !important;
-    }
-    .card-title a {
-      text-decoration: none;
-      color: #34495e;
-    }
-    .card-title a:hover {
-      color: #5e72e4;
-      text-decoration: underline;
-    }
-    .badge.bg-rank {
-      background: #e9ecef;
-      color: #222;
-    }
-  </style>
 </head>
 <body>
   <a href="/" class="home-btn">home</a>
   <div class="container mt-5">
     <h2 class="mb-4">펀드 추천 결과 (상위 30개)</h2>
+
+    <!-- [추가] 클러스터 필터 적용값 표시 -->
+    <div class="mb-4">
+      <strong>회원 맞춤 조건(클러스터 필터):</strong>
+      <div class="mt-2">
+        {% if applied_filters %}
+          {% for key, value in applied_filters.items() %}
+            <span class="badge bg-info text-dark me-2 custom-filter-badge">{{ key }} {{ value }}</span>
+          {% endfor %}
+        {% else %}
+          <span class="text-muted">적용된 필터 없음</span>
+        {% endif %}
+      </div>
+    </div>
 
     <!-- 검색창 -->
     <div class="mb-3">
@@ -73,7 +47,7 @@
         <option value="3">3</option>
         <option value="4">4</option>
         <option value="5">5</option>
-        <option value="6">6 (매우 보수적)</option>
+        <option value="6">6 (매우 안정적적)</option>
       </select>
     </div>
 
@@ -86,6 +60,13 @@
     <!-- 펀드 카드 리스트 -->
     <div id="fundCards" class="row"></div>
   </div>
+  <!-- Footer 시작 -->
+  <footer class="site-footer">
+  <div class="footer-logo-wrap">
+    <img src="/static/img/pr1sm_logo.png" alt="PR1SM 기업 로고" class="footer-logo-img">
+    <div class="footer-corp">© 2025 PR1SM Analytics</div>
+  </div>
+  </footer>
 
   <script>
     // 서버에서 전달된 데이터
