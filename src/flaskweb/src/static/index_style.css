@@ -17,7 +17,7 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 0 40px;
-  height: 68px;
+  height: 86px;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -133,7 +133,7 @@ select:focus {
   box-shadow: 0 0 8px rgba(130,94,228,0.11);
 }
 
-.btn {
+.btn.btn-recommend {
   padding: 14px 0;
   border: none;
   border-radius: 30px;
@@ -153,9 +153,55 @@ select:focus {
   gap: 8px;
 }
 
-.btn:hover {
+.btn.btn-recommend:hover {
   background: #1e7e34;
   box-shadow: 0 6px 20px rgba(30, 126, 52, 0.16);
+}
+
+.btn.dashboard-custom1 {
+  position: fixed;
+  top: 10px;
+  right: 220px; 
+  z-index: 6000;
+  font-size: 0.9rem;
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+  background: linear-gradient(90deg, #5e72e4, #825ee4);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+
+.btn.dashboard-custom1:hover {
+  background: linear-gradient(90deg, #825ee4, #5e72e4);
+  box-shadow: 0 6px 20px rgba(130, 94, 228, 0.2);
+  transform: translateY(-2px);
+}
+
+.btn.dashboard-custom2 {
+  position: fixed;
+  top: 10px;
+  right: 20px;
+  z-index: 6000;
+  font-size: 0.9rem;
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+  background: linear-gradient(90deg, #5e72e4, #825ee4);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+
+.btn.dashboard-custom2:hover {
+  background: linear-gradient(90deg, #825ee4, #5e72e4);
+  box-shadow: 0 6px 20px rgba(130, 94, 228, 0.2);
+  transform: translateY(-2px);
 }
 
 @media (max-width: 600px) {
