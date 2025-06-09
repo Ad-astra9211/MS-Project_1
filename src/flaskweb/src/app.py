@@ -228,11 +228,139 @@ def fund_detail(code):
                            risk=risk.iloc[0].to_dict() if not risk.empty else {},
                            tags=tags.iloc[0].to_dict() if not tags.empty else {})
 
+
 @app.route('/dashboard')
 def dashboard():
-    # 1. 월별 펀드 설정(orders_data): 펀드 신규 설정 수
+    # ────────────────────────────────────────────────────────────────────────────
+    # 0. 필터 파라미터 가져오기 (GET 요청으로 들어옴)
+    # ────────────────────────────────────────────────────────────────────────────
+    search_query = request.args.get('search_query', '')
+    fund_type_majors = request.args.getlist('fund_type_major')
+    max_risk_grade = request.args.get('max_risk_grade', '')
+    min_perf = request.args.get('min_perf', '')
+    max_fee = request.args.get('max_fee', '')
+    selected_tags = request.args.getlist('tags') # 'tags=가치주&tags=성장주'
+
+    # 현재 필터 값을 템플릿에 전달하여 폼에 기본값으로 설정
+    current_filters = {
+        'search_query': search_query,
+        'fund_type_major': fund_type_majors,
+        'max_risk_grade': max_risk_grade,
+        'min_perf': min_perf,
+        'max_fee': max_fee,
+        'selected_tags': selected_tags
+    }
+
+    # ────────────────────────────────────────────────────────────────────────────
+    # 0.1. 필터링된 펀드 목록 조회 (새로운 메인 테이블용)
+    # ────────────────────────────────────────────────────────────────────────────
+    # Databricks SQL에서는 GROUP_CONCAT 대신 ARRAY_JOIN(FILTER(ARRAY(...), x -> x IS NOT NULL), ', ')를 사용합니다.
+    # MISSING_AGGREGATION 오류 해결을 위해 ARRAY 내의 태그 컬럼들을 ANY_VALUE()로 감싸줍니다.
+    filtered_funds_sql = """
+        SELECT
+            fi.`펀드코드`,
+            fi.`펀드명`,
+            fi.`운용사명`,
+            fp.`펀드성과정보_1년`,
+            frg.`투자위험등급`,
+            ff.`운용보수`,
+            ARRAY_JOIN(
+                FILTER(
+                    ARRAY(
+                        CASE WHEN ANY_VALUE(ft.`가치주`) > 0 THEN '가치주' ELSE NULL END,
+                        CASE WHEN ANY_VALUE(ft.`성장주`) > 0 THEN '성장주' ELSE NULL END,
+                        CASE WHEN ANY_VALUE(ft.`중소형주`) > 0 THEN '중소형주' ELSE NULL END,
+                        CASE WHEN ANY_VALUE(ft.`글로벌`) > 0 THEN '글로벌' ELSE NULL END,
+                        CASE WHEN ANY_VALUE(ft.`자산배분`) > 0 THEN '자산배분' ELSE NULL END,
+                        CASE WHEN ANY_VALUE(ft.`4차산업`) > 0 THEN '4차산업' ELSE NULL END,
+                        CASE WHEN ANY_VALUE(ft.`ESG`) > 0 THEN 'ESG' ELSE NULL END,
+                        CASE WHEN ANY_VALUE(ft.`배당주`) > 0 THEN '배당주' ELSE NULL END,
+                        CASE WHEN ANY_VALUE(ft.`FoFs`) > 0 THEN 'FoFs' ELSE NULL END,
+                        CASE WHEN ANY_VALUE(ft.`퇴직연금`) > 0 THEN '퇴직연금' ELSE NULL END,
+                        CASE WHEN ANY_VALUE(ft.`고난도금융상품`) > 0 THEN '고난도금융상품' ELSE NULL END,
+                        CASE WHEN ANY_VALUE(ft.`절대수익추구`) > 0 THEN '절대수익추구' ELSE NULL END,
+                        CASE WHEN ANY_VALUE(ft.`레버리지`) > 0 THEN '레버리지' ELSE NULL END,
+                        CASE WHEN ANY_VALUE(ft.`퀀트`) > 0 THEN '퀀트' ELSE NULL END
+                    ),
+                    x -> x IS NOT NULL
+                ), ', '
+            ) AS `주요태그`
+        FROM funds_data.funds_info fi
+        LEFT JOIN funds_data.fund_types ftp ON fi.`펀드코드` = ftp.`펀드코드`
+        LEFT JOIN funds_data.fund_performance fp ON fi.`펀드코드` = fp.`펀드코드`
+        LEFT JOIN funds_data.fund_risk_grades frg ON fi.`펀드코드` = frg.`펀드코드`
+        LEFT JOIN funds_data.fund_fees ff ON fi.`펀드코드` = ff.`펀드코드`
+        LEFT JOIN funds_data.fund_tags ft ON fi.`펀드코드` = ft.`펀드코드`
+        WHERE 1=1
+    """
+    filtered_funds_params = []
+
+    if search_query:
+        filtered_funds_sql += " AND fi.`펀드명` LIKE ?"
+        filtered_funds_params.append(f'%{search_query}%')
+    if fund_type_majors:
+        placeholders = ','.join(['?'] * len(fund_type_majors))
+        filtered_funds_sql += f" AND ftp.`대유형` IN ({placeholders})"
+        filtered_funds_params.extend(fund_type_majors)
+    if max_risk_grade:
+        filtered_funds_sql += " AND frg.`투자위험등급` <= ?"
+        filtered_funds_params.append(float(max_risk_grade))
+    if min_perf:
+        filtered_funds_sql += " AND fp.`펀드성과정보_1년` >= ?"
+        filtered_funds_params.append(float(min_perf))
+    if max_fee:
+        filtered_funds_sql += " AND ff.`운용보수` <= ?"
+        filtered_funds_params.append(float(max_fee))
+    
+    tag_cols = [ # tag_cols는 여기서 다시 한번 정의됩니다 (아래의 social_traffic 및 theme_metrics에서 참조)
+        '가치주', '성장주', '중소형주', '글로벌', '자산배분', '4차산업',
+        'ESG', '배당주', 'FoFs', '퇴직연금', '고난도금융상품',
+        '절대수익추구', '레버리지', '퀀트'
+    ]
+    for tag in selected_tags:
+        # tag_cols와 비교하여 유효성 검사
+        if tag in tag_cols:
+            filtered_funds_sql += f" AND ft.`{tag}` > 0" # 필터 조건도 ANY_VALUE로 감싸줍니다.
+
+    # ARRAY_JOIN(FILTER(ARRAY(...)))는 이미 최종 문자열이므로 GROUP BY에 포함되지 않습니다.
+    # GROUP BY 절은 집계되지 않는 SELECT 컬럼만 포함해야 합니다.
+    filtered_funds_sql += " GROUP BY fi.`펀드코드`, fi.`펀드명`, fi.`운용사명`, fp.`펀드성과정보_1년`, frg.`투자위험등급`, ff.`운용보수`"
+    
+    filtered_funds = run_query(filtered_funds_sql, filtered_funds_params).to_dict(orient='records')
+
+
+    # ────────────────────────────────────────────────────────────────────────────
+    # 0.2. 드롭다운 필터링을 위한 고유 값 조회
+    # ────────────────────────────────────────────────────────────────────────────
+    all_major_types_sql = "SELECT DISTINCT `대유형` FROM funds_data.fund_types ORDER BY `대유형`"
+    all_major_types = [row['대유형'] for _, row in run_query(all_major_types_sql).iterrows()]
+
+    # ────────────────────────────────────────────────────────────────────────────
+    # 0. (카드) 총 펀드 수
+    # ────────────────────────────────────────────────────────────────────────────
+    total_funds_sql = """
+        SELECT COUNT(*) AS total_count
+        FROM funds_data.funds_info
+    """
+    df_total_funds = run_query(total_funds_sql)
+    total_funds = int(df_total_funds.loc[0, 'total_count'])
+
+    # ────────────────────────────────────────────────────────────────────────────
+    # 00. (카드) 평균 1년 성과
+    # ────────────────────────────────────────────────────────────────────────────
+    avg_perf_sql = """
+        SELECT AVG(`펀드성과정보_1년`) AS avg_perf
+        FROM funds_data.fund_performance
+    """
+    df_avg_perf = run_query(avg_perf_sql)
+    average_perf = round(float(df_avg_perf.loc[0, 'avg_perf'] or 0), 2)
+
+    # ────────────────────────────────────────────────────────────────────────────
+    # 1. 월별 펀드 설정(orders_data)
+    # ────────────────────────────────────────────────────────────────────────────
     orders_sql = """
-        SELECT DATE_FORMAT(`설정일`, 'yyyy-MM') AS month, COUNT(*) AS num_funds
+        SELECT DATE_FORMAT(`설정일`, 'yyyy-MM') AS month,
+               COUNT(*) AS num_funds
         FROM funds_data.funds_info
         GROUP BY month
         ORDER BY month
@@ -243,35 +371,21 @@ def dashboard():
         "values": df_orders["num_funds"].tolist()
     }
 
-    # 2. 
-    sales_sql = """
-    SELECT DATE_FORMAT(i.`설정일`, 'yyyy-MM') AS month, SUM(p.`펀드성과정보_1년`) AS total_sales
-    FROM funds_data.fund_performance p
-    JOIN funds_data.funds_info i ON p.`펀드코드` = i.`펀드코드`
-    GROUP BY month
-    ORDER BY month
+    # ────────────────────────────────────────────────────────────────────────────
+    # 2. 평균보수 (운용보수+판매보수 합의 평균)
+    # ────────────────────────────────────────────────────────────────────────────
+    avg_fee_sql = """
+        SELECT ROUND(AVG(ff.`운용보수` + ff.`판매보수`), 2) AS avg_fee
+        FROM funds_data.fund_fees ff
     """
-    df_sales = run_query(sales_sql)
-    sales_data = {
-        "months": df_sales["month"].tolist(),
-        "values": [round(x, 2) for x in df_sales["total_sales"].tolist()]
-    }
+    df_avg_fee = run_query(avg_fee_sql)
+    average_fee = float(df_avg_fee.loc[0, 'avg_fee'] or 0)
 
-    # 3. 페이지 방문 현황(page_visits): 펀드별 임의 집계 (순자산 등 활용)
-    page_visits_sql = """
-        SELECT i.`펀드명` AS name,
-               CAST(p.`순자산`/1000000 AS INT) AS visitors,
-               CAST(p.`순자산`/2000000 AS INT) AS unique_users,
-               ROUND(100 - MOD(p.`펀드성과정보_1년`, 100), 2) AS bounce_rate
-        FROM funds_data.funds_info i
-        JOIN funds_data.fund_performance p ON i.`펀드코드` = p.`펀드코드`
-        LIMIT 10
-    """
-    df_page_visits = run_query(page_visits_sql)
-    page_visits = df_page_visits.to_dict(orient='records')
 
-    # 4. 소셜 트래픽(social_traffic): 주요 테마별 합계 및 비율
-    tag_cols = ['가치주', '성장주', '중소형주', '글로벌', '자산배분', '4차산업', 'ESG', '배당주', 'FoFs', '퇴직연금', '고난도금융상품', '절대수익추구', '레버리지', '퀀트']
+    # ────────────────────────────────────────────────────────────────────────────
+    # 4. 주요 테마별 펀드 비중(social_traffic)
+    # ────────────────────────────────────────────────────────────────────────────
+    # tag_cols는 위에 정의된 것을 사용
     tag_sum_sql = f"""
         SELECT
             SUM(`가치주`) AS `가치주`,
@@ -280,7 +394,7 @@ def dashboard():
             SUM(`글로벌`) AS `글로벌`,
             SUM(`자산배분`) AS `자산배분`,
             SUM(`4차산업`) AS `4차산업`,
-            SUM(`ESG`) AS `ESG`,
+            SUM(`ESG`) AS `ESG(사회책임투자형)`,
             SUM(`배당주`) AS `배당주`,
             SUM(`FoFs`) AS `FoFs`,
             SUM(`퇴직연금`) AS `퇴직연금`,
@@ -302,12 +416,179 @@ def dashboard():
             "percent": percent
         })
 
+    # ────────────────────────────────────────────────────────────────────────────
+    # 5. 투자위험등급 분포(risk_data)
+    # ────────────────────────────────────────────────────────────────────────────
+    risk_dist_sql = """
+        SELECT ROUND(`투자위험등급`) AS risk_grade,
+               COUNT(*) AS count
+        FROM funds_data.fund_risk_grades
+        GROUP BY risk_grade
+        ORDER BY risk_grade
+    """
+    df_risk = run_query(risk_dist_sql)
+    risk_data = {
+        "labels": [int(x) for x in df_risk["risk_grade"].tolist()],
+        "values": df_risk["count"].tolist()
+    }
+    # ────────────────────────────────────────────────────────────────────────────
+    # 6.1 테마별 평균 성과 & 평균 위험(theme_metrics)
+    # ────────────────────────────────────────────────────────────────────────────
+    theme_metrics = {}
+    for tag in tag_cols:
+        theme_sql = f"""
+            SELECT
+                AVG(fp.`펀드성과정보_1년`)   AS avg_perf,
+                AVG(fr.`투자위험등급`)     AS avg_risk
+            FROM funds_data.fund_tags t
+            JOIN funds_data.fund_performance fp ON t.`펀드코드` = fp.`펀드코드`
+            JOIN funds_data.fund_risk_grades fr ON t.`펀드코드` = fr.`펀드코드`
+            WHERE t.`{tag}` > 0
+        """
+        df_theme = run_query(theme_sql)
+        theme_metrics[tag] = {
+            "avg_perf": round(float(df_theme.loc[0, 'avg_perf'] or 0), 2),
+            "avg_risk": round(float(df_theme.loc[0, 'avg_risk'] or 0), 2)
+        }
+    # ────────────────────────────────────────────────────────────────────────────
+    # 6.2 추천 랭킹 상위 10개 펀드(top10_funds)
+    # ────────────────────────────────────────────────────────────────────────────
+    top10_sql = """
+        SELECT i.`펀드명` AS name,
+               k.`추천랭킹` AS rank,
+               ROUND(k.`최종점수`, 2) AS score
+        FROM funds_data.funds_info i
+        JOIN funds_data.fund_rank k ON i.`펀드코드` = k.`펀드코드`
+        ORDER BY k.`추천랭킹` ASC
+        LIMIT 10
+    """
+    df_top10 = run_query(top10_sql)
+    top10_funds = df_top10.to_dict(orient='records')
+
+    # ────────────────────────────────────────────────────────────────────────────
+    # 7. 펀드 대분류 분포(fund_type_dist: Pie Chart)
+    # ────────────────────────────────────────────────────────────────────────────
+    type_dist_sql = """
+        SELECT `대유형` AS category,
+               COUNT(*)           AS cnt
+        FROM funds_data.fund_types
+        GROUP BY `대유형`
+    """
+    df_type_dist = run_query(type_dist_sql)
+    fund_type_dist = {
+        "labels": df_type_dist["category"].tolist(),
+        "values": df_type_dist["cnt"].tolist()
+    }
+
+    # ────────────────────────────────────────────────────────────────────────────
+    # 8. 대분류별 평균 1년 성과 & 평균 최대 손실폭 (라인 차트, 필터 반영)
+    # ────────────────────────────────────────────────────────────────────────────
+    perf_mdd_sql = f"""
+        SELECT
+            ftp.`대유형` AS category,
+            ROUND(AVG(fp.`펀드성과정보_1년`), 2)   AS avg_perf,
+            ROUND(AVG(fp.`MaximumDrawDown_1년`), 2) AS avg_mdd
+        FROM funds_data.funds_info fi
+        JOIN funds_data.fund_performance fp ON fi.`펀드코드` = fp.`펀드코드`
+        JOIN funds_data.fund_types ftp       ON fi.`펀드코드` = ftp.`펀드코드`
+        JOIN funds_data.fund_fees ff         ON fi.`펀드코드` = ff.`펀드코드`
+        JOIN funds_data.fund_risk_grades frg ON fi.`펀드코드` = frg.`펀드코드`
+        LEFT JOIN funds_data.fund_tags ft     ON fi.`펀드코드` = ft.`펀드코드`
+        WHERE 1=1
+          {"AND fi.`펀드명` LIKE ?" if search_query else ""}
+          {f"AND ftp.`대유형` IN ({','.join(['?']*len(fund_type_majors))})" if fund_type_majors else ""}
+          {"AND frg.`투자위험등급` <= ?" if max_risk_grade else ""}
+          {"AND fp.`펀드성과정보_1년` >= ?" if min_perf else ""}
+          {"AND ff.`운용보수` <= ?" if max_fee else ""}
+          -- 태그 필터 반복 적용 (ANY_VALUE)
+          {" ".join([f"AND ft.`{tag}` > 0" for tag in selected_tags])}
+        GROUP BY ftp.`대유형`
+        ORDER BY ftp.`대유형`
+    """
+    df_perf_mdd = run_query(perf_mdd_sql, filtered_funds_params)
+    perf_mdd_categories = df_perf_mdd["category"].tolist()
+    perf_mdd_perf       = df_perf_mdd["avg_perf"].tolist()
+    perf_mdd_mdd        = df_perf_mdd["avg_mdd"].tolist()
+
+    # ────────────────────────────────────────────────────────────────────────────
+    # 9. 대분류별 펀드 자금흐름 합 (NetCashFlow_1년) - 라인 차트, 필터 반영
+    # ────────────────────────────────────────────────────────────────────────────
+    cashflow_sql = f"""
+        SELECT
+            ftp.`대유형` AS category,
+            ROUND(SUM(fp.`NetCashFlow펀드자금흐름_1년`), 2) AS total_cashflow
+        FROM funds_data.funds_info fi
+        JOIN funds_data.fund_performance fp ON fi.`펀드코드` = fp.`펀드코드`
+        JOIN funds_data.fund_types ftp       ON fi.`펀드코드` = ftp.`펀드코드`
+        JOIN funds_data.fund_fees ff         ON fi.`펀드코드` = ff.`펀드코드`
+        JOIN funds_data.fund_risk_grades frg ON fi.`펀드코드` = frg.`펀드코드`
+        LEFT JOIN funds_data.fund_tags ft     ON fi.`펀드코드` = ft.`펀드코드`
+        WHERE 1=1
+          {"AND fi.`펀드명` LIKE ?" if search_query else ""}
+          {f"AND ftp.`대유형` IN ({','.join(['?']*len(fund_type_majors))})" if fund_type_majors else ""}
+          {"AND frg.`투자위험등급` <= ?" if max_risk_grade else ""}
+          {"AND fp.`펀드성과정보_1년` >= ?" if min_perf else ""}
+          {"AND ff.`운용보수` <= ?" if max_fee else ""}
+          {" ".join([f"AND ft.`{tag}` > 0" for tag in selected_tags])}
+        GROUP BY ftp.`대유형`
+        ORDER BY ftp.`대유형`
+    """
+    df_cashflow = run_query(cashflow_sql, filtered_funds_params)
+    cashflow_categories = df_cashflow["category"].tolist()
+    cashflow_values     = df_cashflow["total_cashflow"].tolist()
+
+    # ────────────────────────────────────────────────────────────────────────────
+    # 10. 테마별 상위 5개 펀드(theme_top5: Table)
+    #     * 미리 모든 테마에 대해 Top 5를 구해서 넘겨줌
+    # ────────────────────────────────────────────────────────────────────────────
+    theme_top5 = {}
+    for tag in tag_cols:
+        top5_sql = f"""
+            SELECT i.`펀드명` AS name,
+                   fp.`펀드성과정보_1년` AS perf
+            FROM funds_data.fund_tags t
+            JOIN funds_data.fund_performance fp ON t.`펀드코드` = fp.`펀드코드`
+            JOIN funds_data.funds_info i ON t.`펀드코드` = i.`펀드코드`
+            WHERE t.`{tag}` > 0
+            ORDER BY fp.`펀드성과정보_1년` DESC
+            LIMIT 5
+        """
+        df_top5 = run_query(top5_sql)
+        # [{'name': '펀드A', 'perf': 12.34}, …]
+        theme_top5[tag] = df_top5.to_dict(orient='records')
+
+    # ────────────────────────────────────────────────────────────────────────────
+    # 모든 데이터를 템플릿으로 전달
+    # ────────────────────────────────────────────────────────────────────────────
     return render_template(
         'dashboard.html',
-        sales_data=sales_data,
+
+        # 카드
+        total_funds=total_funds,
+        average_perf=average_perf,
+        average_fee=average_fee,
         orders_data=orders_data,
-        page_visits=page_visits,
-        social_traffic=social_traffic
+
+        # 필터링된 펀드 목록
+        filtered_funds=filtered_funds,
+        current_filters=current_filters,
+        all_major_types=all_major_types,
+
+        # 차트용 데이터
+        fund_type_dist=fund_type_dist,
+        perf_mdd_categories=perf_mdd_categories,
+        perf_mdd_perf=perf_mdd_perf,
+        perf_mdd_mdd=perf_mdd_mdd,
+        cashflow_categories=cashflow_categories,
+        cashflow_values=cashflow_values,
+
+        # 기존 테마 차트 & 테이블
+        social_traffic=social_traffic,
+        risk_data=risk_data,
+        top10_funds=top10_funds,
+        tag_cols=tag_cols,
+        theme_metrics=theme_metrics,
+        theme_top5=theme_top5
     )
 
 @app.route('/db_dash')
