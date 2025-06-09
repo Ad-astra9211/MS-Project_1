@@ -3,183 +3,755 @@
 {% block title %}펀드 대시보드{% endblock %}
 
 {% block head %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-  .dashboard-grid {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    grid-gap: 20px;
-  }
-  .card {
-    background: white;
-    border-radius: 10px;
-    padding: 20px;
-    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
-  }
-  .card-header {
-    font-weight: 700;
-    color: #004085;
-    margin-bottom: 15px;
-    font-size: 1.2rem;
-  }
-  .chart-large {
-    grid-column: span 8;
-  }
-  .chart-small {
-    grid-column: span 4;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-  }
-  th, td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-  }
-  th {
-    background-color: #004085;
-    color: white;
-  }
-</style>
+  <!-- Chart.js 불러오기 -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* 전체 대시보드 컨테이너: 왼쪽 필터 패널 + 오른쪽 콘텐츠 */
+    .overall-dashboard-container {
+      display: grid;
+      grid-template-columns: 280px 1fr; /* 왼쪽 패널 너비 고정, 오른쪽 유동 */
+      gap: 20px;
+      max-width: 1400px; /* 전체 대시보드 최대 너비 */
+      margin: 40px auto; /* 중앙 정렬 */
+      padding: 0 20px;
+    }
+
+    /* 왼쪽 필터 패널 스타일 */
+    .filter-panel {
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px; /* 필터 요소 간 간격 */
+      position: sticky; /* 스크롤 시 고정 */
+      top: 20px; /* 상단에서부터의 거리 */
+      height: fit-content; /* 내용에 맞춰 높이 조절 */
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .filter-group label {
+      font-weight: 600;
+      color: #004085;
+      font-size: 0.95rem;
+    }
+
+    .filter-panel input[type="text"],
+    .filter-panel input[type="number"],
+    .filter-panel select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 0.9rem;
+      box-sizing: border-box; /* 패딩이 너비에 포함되도록 */
+    }
+
+    .filter-panel .checkbox-group {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr); /* 2열로 체크박스 정렬 */
+      gap: 5px 10px; /* 행, 열 간격 */
+    }
+
+    .filter-panel .checkbox-group label {
+      font-weight: normal;
+      color: #333;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .filter-panel button {
+      background-color: #007bff;
+      color: white;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
+      margin-top: 10px;
+    }
+
+    .filter-panel button:hover {
+      background-color: #0056b3;
+    }
+
+    /* 메인 콘텐츠 그리드 스타일 */
+    .main-content-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      grid-gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    /* 카드 스타일 (기존과 동일) */
+    .card {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      overflow: hidden;
+    }
+    .card-header {
+      font-weight: 700;
+      color: #004085;
+      margin-bottom: 6px;
+      font-size: 1rem;
+      white-space: normal;
+      overflow-wrap: break-word;
+      line-height: 1.2;
+    }
+    .card-subtext {
+      font-size: 0.75rem;
+      color: #28a745;
+      margin-top: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* 컬럼(span) 클래스 (기존과 동일) */
+    .chart-small  { grid-column: span 3;  }
+    .chart-medium { grid-column: span 6;  }
+    .chart-wide   { grid-column: span 8;  }
+    .chart-narrow { grid-column: span 4;  }
+    .chart-full   { grid-column: span 12; }
+
+    /* 차트 컨테이너 & 캔버스 높이 (기존과 동일) */
+    .chart-container {
+      position: relative;
+      flex-grow: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .chart-canvas {
+      width: 100% !important;
+      height: 100px !important;
+    }
+    .theme-chart-canvas {
+      height: 150px !important;
+    }
+    .type-chart-canvas {
+      height: 130px !important;
+    }
+
+    /* 테이블 스타일 (기존과 동일) */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+      table-layout: fixed;
+    }
+    th, td {
+      padding: 6px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+      word-break: break-word;
+    }
+    th {
+      background-color: #004085;
+      color: #ffffff;
+      font-size: 0.9rem;
+    }
+    tbody {
+      display: block;
+      max-height: 100px;
+      overflow-y: auto;
+    }
+    thead, tbody tr {
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    /* 드롭다운 & 테마 카드 스타일 (기존과 동일) */
+    .theme-card {
+      grid-column: span 12;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .theme-select {
+      margin-bottom: 6px;
+      font-size: 0.9rem;
+      padding: 4px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      width: 180px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .theme-container {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    /* 테마별 상위 5개 펀드 테이블 카드 (기존과 동일) */
+    .theme-top5-card {
+      grid-column: span 12;
+      padding: 8px;
+      overflow: hidden;
+    }
+    #themeTop5Table {
+      width: 100%;
+      table-layout: fixed;
+    }
+    #themeTop5Table th, #themeTop5Table td {
+      padding: 5px;
+      font-size: 0.9rem;
+      word-break: break-word;
+    }
+    #themeTop5Table tbody {
+      display: block;
+      max-height: 80px;
+      overflow-y: auto;
+    }
+    #themeTop5Table thead, #themeTop5Table tbody tr {
+      display: table;
+      width: 100%;
+      table-layout: fixed;
+    }
+
+    /* 미디어 쿼리: 모바일 환경 대응 (필터 패널이 위로 올라감) */
+    @media (max-width: 768px) {
+      .overall-dashboard-container {
+        grid-template-columns: 1fr; /* 단일 컬럼으로 변경 */
+        padding: 0 10px;
+      }
+      .filter-panel {
+        position: relative; /* 고정 해제 */
+        top: 0;
+        margin-bottom: 20px;
+      }
+      .main-content-grid .chart-small,
+      .main-content-grid .chart-medium,
+      .main-content-grid .chart-narrow,
+      .main-content-grid .chart-wide,
+      .main-content-grid .chart-full {
+        grid-column: span 12; /* 모든 차트/카드 12 span으로 변경 */
+      }
+      .filter-panel .checkbox-group {
+        grid-template-columns: 1fr; /* 모바일에서 체크박스 한 열로 */
+      }
+    }
+  </style>
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-grid">
-  <!-- 상단 통계 카드들 -->
-  <div class="card chart-small">
-    <div class="card-header">총 펀드 수</div>
-    <div style="font-size: 2rem; color: #17a2b8;">{{ orders_data["values"] | sum }}</div>
-    <small style="color: green;">▲ 최근 월별 신규 설정 기준</small>
+<div class="overall-dashboard-container">
+  <!-- 왼쪽 필터 패널 -->
+  <div class="filter-panel">
+    <h2>필터 및 검색</h2>
+    <form action="/dashboard" method="GET">
+      <div class="filter-group">
+        <label for="search_query">펀드명 검색:</label>
+        <input type="text" id="search_query" name="search_query" placeholder="펀드명 또는 키워드" value="{{ current_filters.search_query }}">
+      </div>
+
+      <div class="filter-group">
+        <label for="fund_type_major">펀드 대분류:</label>
+        <select id="fund_type_major" name="fund_type_major">
+          <option value="">-- 전체 --</option>
+          {% for type in all_major_types %}
+            <option value="{{ type }}" {% if current_filters.fund_type_major == type %}selected{% endif %}>{{ type }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="max_risk_grade">최대 투자위험등급:</label>
+        <select id="max_risk_grade" name="max_risk_grade">
+          <option value="">-- 전체 --</option>
+          {% for i in range(1, 6) %} {# 등급 1부터 5까지 #}
+            <option value="{{ i }}" {% if current_filters.max_risk_grade == i|string %}selected{% endif %}>{{ i }}등급 이하</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="min_perf">최소 1년 성과 (%):</label>
+        <input type="number" id="min_perf" name="min_perf" step="0.1" placeholder="예: 5" value="{{ current_filters.min_perf }}">
+      </div>
+
+      <div class="filter-group">
+        <label for="max_fee">최대 운용보수 (%):</label>
+        <input type="number" id="max_fee" name="max_fee" step="0.01" placeholder="예: 0.5" value="{{ current_filters.max_fee }}">
+      </div>
+
+      <div class="filter-group">
+        <label>테마 선택:</label>
+        <div class="checkbox-group">
+          {% for tag in tag_cols %}
+            <label>
+              <input type="checkbox" name="tags" value="{{ tag }}" {% if tag in current_filters.selected_tags %}checked{% endif %}>
+              {{ tag }}
+            </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <button type="submit">필터 적용</button>
+    </form>
   </div>
-  <div class="card chart-small">
-    <div class="card-header">월별 신규 펀드</div>
-    <div style="font-size: 2rem; color: #ffc107;">{{ orders_data["values"][-1] if orders_data["values"] else 0 }}</div>
-    <small style="color: green;">최근 월 신규 설정</small>
-  </div>
-  <div class="card chart-small">
-    <div class="card-header">월별 펀드 성과 합계</div>
-    <div style="font-size: 2rem; color: #28a745;">{{ sales_data["values"][-1] if sales_data["values"] else 0 }}</div>
-    <small style="color: green;">최근 월 기준</small>
-  </div>
-  <div class="card chart-small">
-    <div class="card-header">주요 테마 비중</div>
-    <div style="font-size: 2rem; color: #007bff;">
-      {% if social_traffic %}
-        {{ social_traffic[0].channel }} {{ social_traffic[0].percent }}%
-      {% endif %}
+  <!-- /.filter-panel -->
+
+  <!-- 오른쪽 메인 대시보드 콘텐츠 -->
+  <div class="main-content-grid">
+
+    <!-- 1) 첫 번째 행: 카드 4개 -->
+    <div class="card chart-small">
+      <div class="card-header">총 펀드 수</div>
+      <div style="font-size:1.6rem; color:#17a2b8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        {{ total_funds }}
+      </div>
+      <div class="card-subtext">▲ 보유 펀드 전체</div>
     </div>
-    <small style="color: green;">가장 높은 테마</small>
-  </div>
 
-  <!-- 라인 차트 -->
-  <div class="card chart-large">
-    <div class="card-header">월별 펀드 성과 추이</div>
-    <canvas id="salesLineChart" height="150"></canvas>
-  </div>
+    <div class="card chart-small">
+      <div class="card-header">평균 1년 성과</div>
+      <div style="font-size:1.6rem; color:#28a745; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        {{ average_perf }}%
+      </div>
+      <div class="card-subtext">▲ 전체 펀드 평균</div>
+    </div>
 
-  <!-- 바 차트 -->
-  <div class="card chart-small">
-    <div class="card-header">월별 신규 펀드 수</div>
-    <canvas id="ordersBarChart" height="150"></canvas>
-  </div>
+    <div class="card chart-small">
+      <div class="card-header">최근 월 신규 펀드</div>
+      <div style="font-size:1.6rem; color:#ffc107; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        {{ orders_data["values"][-1] if orders_data["values"] else 0 }}
+      </div>
+      <div class="card-subtext">▲ 최신 월 기준</div>
+    </div>
 
-  <!-- 데이터 테이블 -->
-  <div class="card chart-large">
-    <div class="card-header">펀드별 방문 현황(예시)</div>
-    <table>
-      <thead>
-        <tr>
-          <th>펀드명</th>
-          <th>방문자 수</th>
-          <th>고유 사용자 수</th>
-          <th>이탈률</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for page in page_visits %}
-        <tr>
-          <td>{{ page.name }}</td>
-          <td>{{ page.visitors }}</td>
-          <td>{{ page.unique_users }}</td>
-          <td>{{ page.bounce_rate }}%</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+    <div class="card chart-small">
+      <div class="card-header">평균보수</div>
+      <div style="font-size:1.6rem; color:#dc3545; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+        {{ average_fee }}%
+      </div>
+      <div class="card-subtext">▲ 운용보수+판매보수 평균</div>
+    </div>
 
-  <div class="card chart-small">
-    <div class="card-header">주요 테마별 펀드 비중</div>
-    <table>
-      <thead>
-        <tr>
-          <th>테마</th>
-          <th>펀드 수</th>
-          <th>비율</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for social in social_traffic %}
-        <tr>
-          <td>{{ social.channel }}</td>
-          <td>{{ social.visitors }}</td>
-          <td>{{ social.percent }}%</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+
+    <!-- 2) 두 번째 행: 스캐터 차트 -->
+    <div class="card chart-wide">
+      <div class="card-header">대분류별 평균 1년 성과 vs 평균 최대 손실폭</div>
+      <div class="chart-container">
+        <canvas id="perfMDDLineChart" class="chart-canvas"></canvas>
+      </div>
+      <div class="card-subtext">▲ 필터 반영</div>
+    </div>
+
+    <!-- 3) 두 번째 행 나머지: 펀드 대분류 분포 (높이 늘림) -->
+    <div class="card chart-narrow" style="overflow: visible;">
+      <div class="card-header">펀드 대분류 분포</div>
+      <div class="chart-container">
+        <canvas id="typePieChart" class="type-chart-canvas"></canvas>
+      </div>
+      <div class="card-subtext">▲ fund_types 기준</div>
+    </div>
+
+
+    <!-- 4) 세 번째 행: 바 차트 · 테이블 -->
+    <div class="card chart-narrow">
+      <div class="card-header">대분류별 연간 자금흐름</div>
+      <div class="chart-container">
+        <canvas id="cashflowLineChart" class="chart-canvas"></canvas>
+      </div>
+    </div>
+
+    <div class="card chart-narrow">
+      <div class="card-header">주요 테마별 펀드 비중</div>
+      <table>
+        <thead>
+          <tr>
+            <th>테마</th>
+            <th>펀드 수</th>
+            <th>비율(%)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for social in social_traffic %}
+          <tr>
+            <td>{{ social.channel }}</td>
+            <td>{{ social.visitors }}</td>
+            <td>{{ social.percent }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card chart-narrow">
+      <div class="card-header">투자위험등급 분포</div>
+      <div class="chart-container">
+        <canvas id="riskPieChart" class="chart-canvas"></canvas>
+      </div>
+      <div class="card-subtext">▲ fund_risk_grades 기준</div>
+    </div>
+
+
+    <!-- 5) 네 번째 행: 추천 랭킹 상위 10개 펀드 -->
+    <div class="card chart-full" style="overflow-y:auto; max-height: 180px;">
+      <div class="card-header">추천 랭킹 상위 10개 펀드</div>
+      <table>
+        <thead>
+          <tr>
+            <th>순위</th>
+            <th>펀드명</th>
+            <th>최종점수</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for fund in top10_funds %}
+          <tr>
+            <td>{{ fund.rank }}</td>
+            <td>{{ fund.name }}</td>
+            <td>{{ fund.score }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+
+    <!-- 6) 다섯 번째 행: 테마별 평균 성과 & 평균 위험 -->
+    <div class="card theme-card">
+      <div class="card-header">테마별 평균 성과 & 평균 위험</div>
+      <div class="theme-container">
+        <select id="themeSelect" class="theme-select">
+          {% for tag in tag_cols %}
+            <option value="{{ tag }}">{{ tag }}</option>
+          {% endfor %}
+        </select>
+        <div class="chart-container" style="flex-grow:2;">
+          <canvas id="themeBarChart" class="chart-canvas theme-chart-canvas"></canvas>
+        </div>
+      </div>
+      <div class="card-subtext">▲ 선택한 테마의 펀드 평균 성과(좌) & 평균 투자위험(우)</div>
+    </div>
+
+    <!-- 7) 여섯 번째 행: 테마별 상위 5개 펀드 테이블 -->
+    <div class="card theme-top5-card" style="overflow-y:auto; max-height: 140px;">
+      <div class="card-header">테마별 상위 5개 펀드</div>
+      <table id="themeTop5Table">
+        <thead>
+          <tr>
+            <th>펀드명</th>
+            <th>1년 성과</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set initial_tag = tag_cols[0] %}
+          {% for row in theme_top5[initial_tag] %}
+          <tr>
+            <td>{{ row.name }}</td>
+            <td>{{ row.perf }}%</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 8) 마지막 행: 필터링된 펀드 목록 테이블 (새롭게 추가) -->
+    <div class="card chart-full" style="overflow-y:auto; max-height: 300px;">
+        <div class="card-header">필터링된 펀드 목록</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>펀드명</th>
+                    <th>운용사명</th>
+                    <th>1년 성과</th>
+                    <th>투자위험등급</th>
+                    <th>운용보수</th>
+                    <th>주요 태그</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for fund in filtered_funds %}
+                <tr>
+                    <td>{{ fund.펀드명 }}</td>
+                    <td>{{ fund.운용사명 }}</td>
+                    <td>{{ fund.펀드성과정보_1년 }}%</td>
+                    <td>{{ fund.투자위험등급 }}</td>
+                    <td>{{ fund.운용보수 }}%</td>
+                    <td>{{ fund.주요태그 if fund.주요태그 else '-' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6">해당하는 펀드가 없습니다.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
   </div>
+  <!-- /.main-content-grid -->
 </div>
+<!-- /.overall-dashboard-container -->
 
+<!-- ───────────────────────────────────────────────────────────
+     JavaScript: 차트 초기화 및 동적 업데이트
+     ─────────────────────────────────────────────────────────── -->
 <script>
-  const salesMonths = {{ sales_data["months"] | tojson | safe }};
-  const salesValues = {{ sales_data["values"] | tojson | safe }};
-  const ordersMonths = {{ orders_data["months"] | tojson | safe }};
-  const ordersValues = {{ orders_data["values"] | tojson | safe }};
-
-  const salesLineCtx = document.getElementById('salesLineChart').getContext('2d');
-  const salesLineChart = new Chart(salesLineCtx, {
+  // 2) 대분류별 평균 1년 성과 vs 평균 최대 손실폭 (중첩 라인 차트)
+  const perfMDDLabels = {{ perf_mdd_categories | tojson | safe }};
+  const perfMDDPerf   = {{ perf_mdd_perf       | tojson | safe }};
+  const perfMDDMDD    = {{ perf_mdd_mdd        | tojson | safe }};
+  const perfMDDCtx    = document.getElementById('perfMDDLineChart').getContext('2d');
+  new Chart(perfMDDCtx, {
     type: 'line',
     data: {
-      labels: salesMonths,
-      datasets: [{
-        label: '월별 펀드 성과 합계',
-        data: salesValues,
-        backgroundColor: 'rgba(0,123,255,0.2)',
-        borderColor: 'rgba(0,123,255,1)',
-        borderWidth: 2,
-        fill: true,
-        tension: 0.3,
-        pointRadius: 4,
-      }]
+      labels: perfMDDLabels,
+      datasets: [
+        {
+          label: '평균 1년 성과',
+          data: perfMDDPerf,
+          yAxisID: 'y',
+          tension: 0.2,
+        },
+        {
+          label: '평균 최대 손실폭',
+          data: perfMDDMDD,
+          yAxisID: 'y1',
+          tension: 0.2,
+        }
+      ]
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       scales: {
-        y: { beginAtZero: true }
+        x: {
+         type: 'category',               // 카테고리 축으로 설정
+         labels: perfMDDLabels,          // 실제 tick 으로 대유형명을 표시
+         title: { display: true, text: '펀드 대유형', font:{ size:10 } },
+         ticks: { font:{ size:9 }, autoSkip: false }
+       },
+        y: {
+          type: 'linear',
+          position: 'left',
+          title: { display: true, text: '1년 성과(%)', font:{ size:10 } },
+          ticks: { font:{ size:9 } },
+          beginAtZero: true
+        },
+        y1: {
+          type: 'linear',
+          position: 'right',
+          title: { display: true, text: '최대 손실폭(%)', font:{ size:10 } },
+          ticks: { font:{ size:9 } },
+          grid: { drawOnChartArea: false }
+        }
+      },
+      plugins: {
+        legend: { position: 'bottom', labels:{ font:{ size:9 } } }
       }
     }
   });
 
-  const ordersBarCtx = document.getElementById('ordersBarChart').getContext('2d');
-  const ordersBarChart = new Chart(ordersBarCtx, {
+  // 2) 펀드 대분류 분포 (Pie Chart) - legend 폰트 크기 줄이고 padding 조정
+  const typeLabels = {{ fund_type_dist["labels"] | tojson | safe }};
+  const typeValues = {{ fund_type_dist["values"] | tojson | safe }};
+  const typePieCtx  = document.getElementById('typePieChart').getContext('2d');
+  const typePieChart = new Chart(typePieCtx, {
+    type: 'pie',
+    data: {
+      labels: typeLabels,
+      datasets: [{
+        data: typeValues,
+        backgroundColor: [
+          'rgba(255,99,132,0.6)',
+          'rgba(54,162,235,0.6)',
+          'rgba(255,206,86,0.6)',
+          'rgba(75,192,192,0.6)',
+          'rgba(153,102,255,0.6)',
+          'rgba(255,159,64,0.6)',
+          'rgba(199,199,199,0.6)',
+          'rgba(100,181,246,0.6)'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            boxWidth: 8,
+            font: { size: 9 },
+            padding: 5
+          }
+        }
+      }
+    }
+  });
+
+  // 3) 대분류별 연간 자금흐름 (라인 차트)
+  const cashflowLabels = {{ cashflow_categories | tojson | safe }};
+  const cashflowData   = {{ cashflow_values     | tojson | safe }};
+  const cashflowCtx    = document.getElementById('cashflowLineChart').getContext('2d');
+  new Chart(cashflowCtx, {
+    type: 'line',
+    data: {
+      labels: cashflowLabels,
+      datasets: [{
+        label: 'NetCashFlow(1년)',
+        data: cashflowData,
+        tension: 0.2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+         type: 'category',
+         labels: cashflowLabels,
+         title: { display: true, text: '펀드 대유형', font:{ size:10 } },
+         ticks: {
+           font: { size:8 },       // 글자 크기 소폭 축소
+           maxRotation: 45,        // 45도 회전
+           minRotation: 45,
+           autoSkip: false         // 모든 레이블 표시
+         }
+       },
+        y: {
+          beginAtZero: true,
+          title: { display: true, text: '자금흐름 합계', font:{ size:10 } },
+          ticks: {
+           font: { size:9 },
+           callback: value => (value / 1_000_000) + 'M'  // 백만 단위 M 표시
+         }
+        }
+      },
+      plugins: {
+        legend: { display: false }
+      }
+    }
+  });
+
+  // 4) 투자위험등급 분포 (Pie Chart)
+  const riskLabels = {{ risk_data["labels"] | tojson | safe }};
+  const riskValues = {{ risk_data["values"] | tojson | safe }};
+  const riskPieCtx  = document.getElementById('riskPieChart').getContext('2d');
+  const riskPieChart = new Chart(riskPieCtx, {
+    type: 'pie',
+    data: {
+      labels: riskLabels.map(x => '등급 ' + x),
+      datasets: [{
+        data: riskValues,
+        backgroundColor: [
+          'rgba(255,99,132,0.6)',
+          'rgba(54,162,235,0.6)',
+          'rgba(255,206,86,0.6)',
+          'rgba(75,192,192,0.6)',
+          'rgba(153,102,255,0.6)',
+          'rgba(255,159,64,0.6)'
+        ]
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { boxWidth:10, font:{ size:10 } }
+        }
+      }
+    }
+  });
+
+  // 5) 테마별 평균 성과 & 평균 위험 (Bar Chart + 드롭다운)
+  const themeMetrics = {{ theme_metrics | tojson | safe }};
+  const themeSelect   = document.getElementById('themeSelect');
+  const themeBarCtx   = document.getElementById('themeBarChart').getContext('2d');
+
+  // 초기 차트: 첫 번째 테마
+  let initTag = themeSelect.value;
+  let initData = themeMetrics[initTag];
+  const themeBarChart = new Chart(themeBarCtx, {
     type: 'bar',
     data: {
-      labels: ordersMonths,
+      labels: ['평균 성과', '평균 위험'],
       datasets: [{
-        label: '월별 신규 펀드 수',
-        data: ordersValues,
-        backgroundColor: 'rgba(255,99,132,0.7)'
+        label: initTag,
+        data: [initData.avg_perf, initData.avg_risk],
+        backgroundColor: [
+          'rgba(54,162,235,0.7)',
+          'rgba(255,159,64,0.7)'
+        ],
+        borderColor: [
+          'rgba(54,162,235,1)',
+          'rgba(255,159,64,1)'
+        ],
+        borderWidth: 1
       }]
     },
     options: {
       responsive: true,
+      maintainAspectRatio: false,
       scales: {
-        y: { beginAtZero: true }
+        x: {
+          ticks: { font:{ size:9 } }
+        },
+        y: {
+          beginAtZero: true,
+          suggestedMax: Math.max(initData.avg_perf, initData.avg_risk) * 1.2,
+          ticks: { font:{ size:9 } }
+        }
+      },
+      plugins: {
+        legend: { position: 'top', labels:{ font:{ size:10 } } }
       }
     }
   });
-</script>
 
+  // 6) 드롭다운 변경 시: 테마별 바 차트 + 상위 5개 펀드 테이블 업데이트
+  const themeTop5 = {{ theme_top5 | tojson | safe }};
+  const tbodyTop5  = document.querySelector('#themeTop5Table tbody');
+
+  themeSelect.addEventListener('change', function() {
+    const selectedTag = this.value;
+    const dataForTag  = themeMetrics[selectedTag];
+
+    // (1) 바 차트 업데이트 (y축 suggestedMax도 재설정)
+    themeBarChart.data.datasets[0].label = selectedTag;
+    themeBarChart.data.datasets[0].data  = [dataForTag.avg_perf, dataForTag.avg_risk];
+    themeBarChart.options.scales.y.suggestedMax = Math.max(dataForTag.avg_perf, dataForTag.avg_risk) * 1.2;
+    themeBarChart.update();
+
+    // (2) 테마별 상위 5개 펀드 테이블 업데이트
+    const top5List = themeTop5[selectedTag];
+    tbodyTop5.innerHTML = '';
+    top5List.forEach(row => {
+      const tr = document.createElement('tr');
+      const tdName = document.createElement('td');
+      tdName.textContent = row.name;
+      const tdPerf = document.createElement('td');
+      tdPerf.textContent = row.perf + '%';
+      tr.appendChild(tdName);
+      tr.appendChild(tdPerf);
+      tbodyTop5.appendChild(tr);
+    });
+  });
+</script>
 {% endblock %}

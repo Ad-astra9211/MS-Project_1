@@ -2,6 +2,7 @@
 data/raw/*
 data/SecretAcessMountCode-storage.ipynb
 data/processed/*
+venvs
 
 #.env
 C:\Users\EL033\dataschool\team1\funds_reco\src\flaskweb\src\.env
@@ -13,3 +14,4 @@ __pycache__/
 
 # OS
 .DS_Store
+.env
