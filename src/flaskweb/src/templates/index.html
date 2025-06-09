@@ -25,38 +25,34 @@
   </header>
 
   <main>
-    <div class="container">
-      <h1>나에게 맞는 펀드 추천</h1>
-      <form action="/recommend" method="POST" class="recommend-form" autocomplete="off">
-        <div class="form-section">
-          <label for="occupation">직업군 <i class="fa-solid fa-circle-info" title="직업군에 따라 맞춤형 추천이 제공됩니다."></i></label>
-          <select name="occupation" id="occupation" required>
-            <option value="" disabled selected>직업군 선택</option>
-            <option value="클러스터링1">클러스터링1</option>
-            <option value="클러스터링2">클러스터링2</option>
-            <option value="클러스터링3">클러스터링3</option>
-            <option value="클러스터링4">클러스터링4</option>
-          </select>
-        </div>
+  <div class="container">
+    <h1>나에게 맞는 펀드 추천</h1>
+    <form action="/recommend" method="POST" class="recommend-form" autocomplete="off">
+      <div class="form-section">
+        <label for="member_code">회원 코드 <i class="fa-solid fa-circle-info" title="발급받은 회원 코드를 입력하세요."></i></label>
+        <input type="text" name="member_code" id="member_code" required placeholder="회원 코드를 입력하세요">
+      </div>
+      <button type="submit" class="btn btn-recommend">
+        <i class="fa-solid fa-magnifying-glass-chart"></i> 추천받기
+      </button>
+    </form>
+  </div>
 
-        <div class="form-section">
-          <label for="risk">위험 선호도 <i class="fa-solid fa-circle-info" title="1: 매우 보수적 ~ 6: 매우 공격적"></i></label>
-          <select name="risk" id="risk" required>
-            <option value="" disabled selected>위험 선호도 선택</option>
-            <option value="1">1 (매우 보수적)</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-            <option value="6">6 (매우 공격적)</option>
-          </select>
-        </div>
-
-        <button type="submit" class="btn btn-recommend">
-          <i class="fa-solid fa-magnifying-glass-chart"></i> 추천받기
-        </button>
-      </form>
+  <div class="sample-note">
+    샘플 회원코드:
+    클러스터0: SYN_1002148
+    클러스터1: SYN_1000075
+    클러스터2: SYN_1000086
+    클러스터3: SYN_1002134
+    클러스터4: SYN_1000051
     </div>
-  </main>
+</main>
+<!-- Footer 시작 -->
+  <footer class="site-footer">
+  <div class="footer-logo-wrap">
+    <img src="/static/img/pr1sm_logo.png" alt="PR1SM 기업 로고" class="footer-logo-img">
+    <div class="footer-corp">© 2025 PR1SM Analytics</div>
+  </div>
+</footer>
 </body>
 </html>
