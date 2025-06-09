@@ -235,7 +235,7 @@ def dashboard():
     # 0. 필터 파라미터 가져오기 (GET 요청으로 들어옴)
     # ────────────────────────────────────────────────────────────────────────────
     search_query = request.args.get('search_query', '')
-    fund_type_major = request.args.get('fund_type_major', '')
+    fund_type_majors = request.args.getlist('fund_type_major')
     max_risk_grade = request.args.get('max_risk_grade', '')
     min_perf = request.args.get('min_perf', '')
     max_fee = request.args.get('max_fee', '')
@@ -244,7 +244,7 @@ def dashboard():
     # 현재 필터 값을 템플릿에 전달하여 폼에 기본값으로 설정
     current_filters = {
         'search_query': search_query,
-        'fund_type_major': fund_type_major,
+        'fund_type_major': fund_type_majors,
         'max_risk_grade': max_risk_grade,
         'min_perf': min_perf,
         'max_fee': max_fee,
@@ -298,9 +298,10 @@ def dashboard():
     if search_query:
         filtered_funds_sql += " AND fi.`펀드명` LIKE ?"
         filtered_funds_params.append(f'%{search_query}%')
-    if fund_type_major:
-        filtered_funds_sql += " AND ftp.`대유형` = ?"
-        filtered_funds_params.append(fund_type_major)
+    if fund_type_majors:
+        placeholders = ','.join(['?'] * len(fund_type_majors))
+        filtered_funds_sql += f" AND ftp.`대유형` IN ({placeholders})"
+        filtered_funds_params.extend(fund_type_majors)
     if max_risk_grade:
         filtered_funds_sql += " AND frg.`투자위험등급` <= ?"
         filtered_funds_params.append(float(max_risk_grade))
@@ -495,7 +496,7 @@ def dashboard():
         LEFT JOIN funds_data.fund_tags ft     ON fi.`펀드코드` = ft.`펀드코드`
         WHERE 1=1
           {"AND fi.`펀드명` LIKE ?" if search_query else ""}
-          {"AND ftp.`대유형` = ?" if fund_type_major else ""}
+          {f"AND ftp.`대유형` IN ({','.join(['?']*len(fund_type_majors))})" if fund_type_majors else ""}
           {"AND frg.`투자위험등급` <= ?" if max_risk_grade else ""}
           {"AND fp.`펀드성과정보_1년` >= ?" if min_perf else ""}
           {"AND ff.`운용보수` <= ?" if max_fee else ""}
@@ -524,7 +525,7 @@ def dashboard():
         LEFT JOIN funds_data.fund_tags ft     ON fi.`펀드코드` = ft.`펀드코드`
         WHERE 1=1
           {"AND fi.`펀드명` LIKE ?" if search_query else ""}
-          {"AND ftp.`대유형` = ?" if fund_type_major else ""}
+          {f"AND ftp.`대유형` IN ({','.join(['?']*len(fund_type_majors))})" if fund_type_majors else ""}
           {"AND frg.`투자위험등급` <= ?" if max_risk_grade else ""}
           {"AND fp.`펀드성과정보_1년` >= ?" if min_perf else ""}
           {"AND ff.`운용보수` <= ?" if max_fee else ""}
