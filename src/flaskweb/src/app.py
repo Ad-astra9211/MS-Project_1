@@ -46,7 +46,7 @@ cluster_fund_filter_conditions = {
         "funds_data.fund_tags.절대수익추구": (">", 0.5),
         "funds_data.fund_tags.퇴직연금": (">", 0.5),
         "funds_data.fund_fees.선취수수료": ("==", 0.0),
-        "funds_data.fund_performance.MaximumDrawDown_1년": ("<", 0.05),
+        "funds_data.fund_performance.MaximumDrawDown_1년": ("<", -5),
         "funds_data.fund_risk_grades.투자위험등급": ("<=", 3)
     },
     2: {  # 신규 고객 또는 빠르게 이탈한 고객
