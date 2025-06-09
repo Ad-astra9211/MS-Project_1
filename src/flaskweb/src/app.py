@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request
+from flask import Flask, request, render_template, redirect, url_for, flash
 import os
 from databricks import sql
 import pandas as pd
@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY')
 
 def run_query(query, params=None):
     with sql.connect(
@@ -36,40 +37,178 @@ def risk_label(risk):
     return risk_map.get(int(risk), str(risk)) if risk else None
 
 # 클러스터별 기본 필터 조건
-cluster_fund_filter_conditions = {
-    0: {  # 오래된 VIP & 활동성 높은 고객
-        "funds_data.fund_performance.펀드성과정보_1년": (">", 0.05),
-        "funds_data.fund_performance.펀드수정샤프연환산_1년": (">", 1.0),
-        "funds_data.fund_risk_grades.투자위험등급": ("<=", 3)
+customer_consumption_cluster_fund_conditions = {
+    # Cluster 0: 핵심 활성 고객 (VIP, 활동성 높은 고객)
+    (0, 0): {
+        # [근거] VIP+소극적. 저위험, 안정형, MDD로 손실 제한.
+        # "fund_tags.배당주": (">", 0.5),
+        # "fund_tags.절대수익추구": (">", 0.5),
+        "fund_performance.펀드성과정보_1년": (">", 0.05),
+        "fund_performance.펀드수정샤프연환산_1년": (">", 1.0),
+        "fund_risk_grades.투자위험등급": ("<=", 3),  # 필수
+        # "fund_performance.MaximumDrawDown_1년": ("<", -5),  # 안정성 강조
     },
-    1: {  # 저활동/이탈 가능성 고객
-        "funds_data.fund_tags.절대수익추구": (">", 0.5),
-        "funds_data.fund_tags.퇴직연금": (">", 0.5),
-        "funds_data.fund_fees.선취수수료": ("==", 0.0),
-        "funds_data.fund_performance.MaximumDrawDown_1년": ("<", -5),
-        "funds_data.fund_risk_grades.투자위험등급": ("<=", 3)
+    (0, 1): {
+        # [근거] VIP+활동성. 성장/글로벌, MDD로 중위험 허용.
+        # "fund_tags.글로벌": (">", 0.5),
+        # "fund_tags.성장주": (">", 0.5),
+        "fund_performance.펀드성과정보_1년": (">", 0.05),
+        "fund_performance.펀드수정샤프연환산_1년": (">", 1.0),
+        "fund_risk_grades.투자위험등급": ("<=", 3),
+        "fund_performance.MaximumDrawDown_1년": ("<", -5),
     },
-    2: {  # 신규 고객 또는 빠르게 이탈한 고객
-        "funds_data.fund_tags.4차산업": (">", 0.5),
-        "funds_data.fund_tags.성장주": (">", 0.5),
-        "funds_data.fund_fees.선취수수료": ("==", 0.0),
-        "funds_data.fund_performance.펀드성과정보_1년": (">", 0.03),
-        "funds_data.fund_risk_grades.투자위험등급": ("<=", 4),
+    (0, 2): {
+        # [근거] 실속형 소비+VIP. 중소형주, 무수수료, 위험등급 필수.
+        "fund_tags.중소형주": (">", 0.5),
+        "fund_performance.펀드성과정보_1년": (">", 0.03),
+        "fund_fees.선취수수료": ("==", 0.0),
+        "fund_risk_grades.투자위험등급": ("<=", 4),
+        "fund_performance.MaximumDrawDown_1년": ("<", -7),  # 공격적 투자자용
     },
-    3: {  # 안정적인 중급 이용 고객
-        "funds_data.fund_tags.자산배분": (">", 0.5),
-        "funds_data.fund_performance.펀드수정샤프연환산_1년": (">", 0.8),
-        "funds_data.fund_fees.운용보수": ("<", 1.0),
-        "funds_data.fund_risk_grades.투자위험등급": ("<=", 2),
+    (0, 3): {
+        # [근거] 가족/장기고객+VIP. 자산배분/ESG, 보수적 MDD.
+        # "fund_tags.자산배분": (">", 0.5),
+        "fund_performance.펀드수정샤프연환산_1년": (">", 0.8),
+        "fund_risk_grades.투자위험등급": ("<=", 2),
+        "fund_performance.MaximumDrawDown_1년": ("<", -4),
     },
-    4: {  # 중저가 이용/평범한 고객
-        "funds_data.fund_tags.배당주": (">", 0.5),
-        "funds_data.fund_tags.중소형주": ("<", 0.5),
-        "funds_data.fund_performance.펀드성과정보_1년": (">", 0.02),
-        "funds_data.fund_fees.판매보수": ("<", 0.8),
-        "funds_data.fund_risk_grades.투자위험등급": ("<=", 3),
+    (0, 4): {
+        # [근거] 젊은/트렌드 소비+VIP. 성장주/중소형주, 위험등급 필수, MDD 완화.
+        # "fund_tags.중소형주": (">", 0.5),
+        "fund_tags.성장주": (">", 0.5),
+        "fund_performance.펀드성과정보_1년": (">", 0.02),
+        "fund_risk_grades.투자위험등급": ("<=", 3),
+        "fund_performance.MaximumDrawDown_1년": ("<", -6),
+    },
+
+    # Cluster 1: 휴면/저관여 고객
+    (1, 0): {
+        "fund_tags.배당주": (">", 0.5),
+        "fund_tags.절대수익추구": (">", 0.5),
+        "fund_performance.펀드성과정보_1년": (">", 0.03),
+        "fund_fees.선취수수료": ("==", 0.0),
+        "fund_performance.MaximumDrawDown_1년": ("<", -3),
+        "fund_risk_grades.투자위험등급": ("<=", 3),
+    },
+    (1, 1): {
+        "fund_tags.배당주": (">", 0.5),
+        "fund_tags.절대수익추구": (">", 0.5),
+        "fund_risk_grades.투자위험등급": ("<=", 3),
+        "fund_performance.MaximumDrawDown_1년": ("<", -3),
+        "fund_fees.선취수수료": ("==", 0.0),
+    },
+    (1, 2): {
+        "fund_tags.중소형주": (">", 0.5),
+        "fund_performance.펀드성과정보_1년": (">", 0.03),
+        "fund_fees.선취수수료": ("==", 0.0),
+        "fund_risk_grades.투자위험등급": ("<=", 4),
+        "fund_performance.MaximumDrawDown_1년": ("<", -7),
+    },
+    (1, 3): {
+        "fund_tags.자산배분": (">", 0.5),
+        "fund_tags.ESG(사회책임투자형)": (">", 0.5),
+        "fund_tags.배당주": (">", 0.5),
+        "fund_fees.선취수수료": ("==", 0.0),
+        "fund_risk_grades.투자위험등급": ("<=", 2),
+        "fund_performance.MaximumDrawDown_1년": ("<", -4),
+    },
+    (1, 4): {
+        "fund_tags.중소형주": (">", 0.5),
+        "fund_tags.성장주": (">", 0.5),
+        "fund_fees.선취수수료": ("==", 0.0),
+        "fund_risk_grades.투자위험등급": ("<=", 3),
+        "fund_performance.MaximumDrawDown_1년": ("<", -6),
+    },
+
+    # Cluster 2: 금융 서비스 중심 고객
+    (2, 0): {
+        "fund_tags.배당주": (">", 0.5),
+        "fund_tags.절대수익추구": (">", 0.5),
+        "fund_performance.펀드성과정보_1년": (">", 0.03),
+        "fund_fees.선취수수료": ("==", 0.0),
+        "fund_risk_grades.투자위험등급": ("<=", 3),
+        "fund_performance.MaximumDrawDown_1년": ("<", -5),
+    },
+    (2, 1): {
+        "fund_tags.절대수익추구": (">", 0.5),
+        "fund_tags.글로벌": (">", 0.5),
+        "fund_performance.펀드성과정보_1년": (">", 0.03),
+        "fund_fees.선취수수료": ("==", 0.0),
+        "fund_risk_grades.투자위험등급": ("<=", 3),
+        "fund_performance.MaximumDrawDown_1년": ("<", -5),
+    },
+    (2, 2): {
+        "fund_tags.중소형주": (">", 0.5),
+        "fund_tags.절대수익추구": (">", 0.5),
+        "fund_performance.펀드성과정보_1년": (">", 0.03),
+        "fund_fees.선취수수료": ("==", 0.0),
+        "fund_risk_grades.투자위험등급": ("<=", 4),
+        "fund_performance.MaximumDrawDown_1년": ("<", -7),
+    },
+    (2, 3): {
+        "fund_tags.자산배분": (">", 0.5),
+        "fund_tags.ESG(사회책임투자형)": (">", 0.5),
+        "fund_performance.펀드수정샤프연환산_1년": (">", 0.8),
+        "fund_fees.선취수수료": ("==", 0.0),
+        "fund_risk_grades.투자위험등급": ("<=", 2),
+        "fund_performance.MaximumDrawDown_1년": ("<", -4),
+    },
+    (2, 4): {
+        "fund_tags.글로벌": (">", 0.5),
+        "fund_tags.성장주": (">", 0.5),
+        "fund_performance.펀드성과정보_1년": (">", 0.02),
+        "fund_fees.선취수수료": ("==", 0.0),
+        "fund_risk_grades.투자위험등급": ("<=", 3),
+        "fund_performance.MaximumDrawDown_1년": ("<", -6),
+    },
+
+    # Cluster 3: 일반/평균 고객
+    (3, 0): {
+        "fund_tags.배당주": (">", 0.5),
+        "fund_tags.자산배분": (">", 0.5),
+        "fund_performance.펀드성과정보_1년": (">", 0.02),
+        "fund_fees.선취수수료": ("==", 0.0),
+        "fund_risk_grades.투자위험등급": ("<=", 3),
+        "fund_performance.MaximumDrawDown_1년": ("<", -5),
+    },
+    (3, 1): {
+        "fund_tags.자산배분": (">", 0.5),
+        "fund_tags.글로벌": (">", 0.5),
+        "fund_tags.성장주": (">", 0.5),
+        "fund_performance.펀드성과정보_1년": (">", 0.02),
+        "fund_fees.선취수수료": ("==", 0.0),
+        "fund_risk_grades.투자위험등급": ("<=", 3),
+        "fund_performance.MaximumDrawDown_1년": ("<", -5),
+    },
+    (3, 2): {
+        "fund_tags.중소형주": (">", 0.5),
+        "fund_tags.자산배분": (">", 0.5),
+        "fund_performance.펀드성과정보_1년": (">", 0.02),
+        "fund_fees.선취수수료": ("==", 0.0),
+        "fund_risk_grades.투자위험등급": ("<=", 4),
+        "fund_performance.MaximumDrawDown_1년": ("<", -8),
+    },
+    (3, 3): {
+        "fund_tags.자산배분": (">", 0.5),
+        "fund_tags.ESG(사회책임투자형)": (">", 0.5),
+        "fund_tags.배당주": (">", 0.5),
+        "fund_performance.펀드성과정보_3년": (">", 0.02),
+        "fund_fees.선취수수료": ("==", 0.0),
+        "fund_risk_grades.투자위험등급": ("<=", 2),
+        "fund_performance.MaximumDrawDown_1년": ("<", -4),
+    },
+    (3, 4): {
+        "fund_tags.중소형주": (">", 0.5),
+        "fund_tags.성장주": (">", 0.5),
+        "fund_performance.펀드성과정보_1년": (">", 0.02),
+        "fund_fees.선취수수료": ("==", 0.0),
+        "fund_risk_grades.투자위험등급": ("<=", 3),
+        "fund_performance.MaximumDrawDown_1년": ("<", -6),
     },
 }
+
+
+
 
 # 테마 키워드
 theme_keywords = ['가치주', '성장주', '중소형주', '글로벌', '자산배분', '4차산업', 'ESG',
@@ -82,45 +221,69 @@ def home():
 @app.route('/recommend', methods=['POST'])
 def recommend():
     try:
-        # 1. 회원코드 입력이 있으면 cluster값을 우선 조회
+        # 1. 회원코드 입력이 있으면 클러스터 값 조회
         member_code = request.form.get('member_code')
-        cluster_value = None
+        customer_cluster_value = None  # 고객 클러스터
+        consumption_cluster_value = None  # 소비 클러스터
         preselected_themes = []
         preselected_risk = None
         cluster_cond = {}
+        applied_filters = {}
 
-        # [핵심] 적용할 필드명 리스트
+        # [핵심] 적용할 필드명 리스트 (SQL 매핑)
         filter_fields = {
-            "funds_data.fund_performance.펀드수정샤프연환산_1년": "p.`펀드수정샤프연환산_1년`",
-            "funds_data.fund_performance.펀드성과정보_1년": "p.`펀드성과정보_1년`",
-            "funds_data.fund_fees.선취수수료": "f.`선취수수료`",
-            "funds_data.fund_performance.MaximumDrawDown_1년": "p.`MaximumDrawDown_1년`",
-            "funds_data.fund_fees.운용보수": "f.`운용보수`",
-            "funds_data.fund_fees.판매보수": "f.`판매보수`"
+            "fund_tags.배당주": "t.`배당주`",
+            "fund_tags.절대수익추구": "t.`절대수익추구`",
+            "fund_tags.글로벌": "t.`글로벌`",
+            "fund_tags.성장주": "t.`성장주`",
+            "fund_tags.중소형주": "t.`중소형주`",
+            "fund_tags.자산배분": "t.`자산배분`",
+            "fund_tags.ESG(사회책임투자형)": "t.`ESG(사회책임투자형)`",
+
+            "fund_performance.펀드성과정보_1년": "p.`펀드성과정보_1년`",
+            "fund_performance.펀드성과정보_3년": "p.`펀드성과정보_3년`",
+            "fund_performance.펀드수정샤프연환산_1년": "p.`펀드수정샤프연환산_1년`",
+            "fund_performance.MaximumDrawDown_1년": "p.`MaximumDrawDown_1년`",
+
+            "fund_risk_grades.투자위험등급": "r.`투자위험등급`",
+            "fund_fees.선취수수료": "f.`선취수수료`"
         }
 
-        if member_code:
-            # cluster값 조회
-            query = "SELECT cluster FROM database_pjt.df_final_with_cluster WHERE `발급회원번호` = ?"
-            df = run_query(query, params=(member_code,))
-            if df.empty:
-                flash('해당 회원 코드가 존재하지 않습니다.')
-                return redirect(url_for('home'))
-            cluster_value = int(df.iloc[0]['cluster'])
 
-            # cluster별 기본 필터/테마/위험등급 추출
-            cluster_cond = cluster_fund_filter_conditions.get(cluster_value, {})
+        # 1-1. 회원코드로 고객/소비 클러스터 조회
+        if member_code:
+            # 소비 클러스터 조회
+            q1 = "SELECT cluster FROM database_pjt.df_final_with_cluster WHERE `발급회원번호` = ?"
+            df1 = run_query(q1, params=(member_code,))
+            if not df1.empty:
+                consumption_cluster_value = int(df1.iloc[0]['cluster'])
+
+            # 고객 클러스터 조회
+            q2 = "SELECT prediction FROM database_pjt.customer_clusters_final WHERE `발급회원번호` = ?"
+            df2 = run_query(q2, params=(member_code,))
+            if not df2.empty:
+                customer_cluster_value = int(df2.iloc[0]['prediction'])
+
+            # 둘 다 없으면 메시지 후 홈으로 리다이렉트
+            if consumption_cluster_value is None and customer_cluster_value is None:
+                flash('존재하지않는 회원번호입니다.')
+                return redirect(url_for('home'))
+
+            # 하나라도 없으면 0으로 대체
+            if consumption_cluster_value is None:
+                consumption_cluster_value = 0
+            if customer_cluster_value is None:
+                customer_cluster_value = 0
+
+            # 클러스터 조합별 조건 추출
+            cluster_key = (customer_cluster_value, consumption_cluster_value)
+            cluster_cond = customer_consumption_cluster_fund_conditions.get(cluster_key, {})
             for key, (op, val) in cluster_cond.items():
-                # 테마 키워드 추출
                 for theme in theme_keywords:
                     if theme in key and op == ">" and val >= 0.5:
                         preselected_themes.append(theme)
-                # 위험등급 추출
                 if '투자위험등급' in key and op in ("<=", "<"):
                     preselected_risk = val
-            # print('cluster_cond:', cluster_cond)
-            # print('preselected_themes:', preselected_themes)
-            # print('preselected_risk:', preselected_risk)
 
         # 2. 폼에서 직접 입력된 값이 있으면 우선 적용
         occupation = request.form.get('occupation')
@@ -161,11 +324,17 @@ def recommend():
         '''
         params = []
 
-        # [3] 클러스터 필터 동적 쿼리 추가
-        applied_filters = {}  # 화면 표시용
+        # 4. 클러스터 필터 동적 쿼리 추가
         if cluster_cond:
             for key, (op, val) in cluster_cond.items():
-                # 필드명이 filter_fields에 있는 경우만 쿼리에 추가
+                # 테마(태그)는 쿼리 필터로 넣지 않고, preselected_themes에만 추가
+                if key.startswith("fund_tags."):
+                    for theme in theme_keywords:
+                        if theme in key and op == ">" and val >= 0.5:
+                            preselected_themes.append(theme)
+                    continue  # 쿼리에는 추가하지 않음
+
+                # 성과, 위험, 수수료 등만 쿼리 필터로 추가
                 if key in filter_fields:
                     sql_field = filter_fields[key]
                     if op == "==":
@@ -173,16 +342,23 @@ def recommend():
                     else:
                         query += f" AND {sql_field} {op} ?"
                     params.append(val)
-                    # 화면 표시용 라벨
+                        # 화면 표시용 라벨
                     label_map = {
-                        "funds_data.fund_performance.펀드수정샤프연환산_1년": "펀드수정샤프연환산_1년",
-                        "funds_data.fund_performance.펀드성과정보_1년": "펀드성과정보_1년",
-                        "funds_data.fund_fees.선취수수료": "선취수수료",
-                        "funds_data.fund_performance.MaximumDrawDown_1년": "MaximumDrawDown_1년",
-                        "funds_data.fund_fees.운용보수": "운용보수",
-                        "funds_data.fund_fees.판매보수": "판매보수"
+                        "fund_tags.배당주": "배당주",
+                        "fund_tags.절대수익추구": "절대수익추구",
+                        "fund_tags.중소형주": "중소형주",
+                        "fund_tags.글로벌": "글로벌",
+                        "fund_tags.성장주": "성장주",
+                        "fund_tags.ESG(사회책임투자형)": "ESG",
+                        "fund_performance.펀드성과정보_1년": "펀드성과정보_1년",
+                        "fund_performance.펀드성과정보_3년": "펀드성과정보_3년",
+                        "fund_performance.펀드수정샤프연환산_1년": "펀드수정샤프연환산_1년",
+                        "fund_performance.MaximumDrawDown_1년": "MaximumDrawDown_1년",
+                        "fund_risk_grades.투자위험등급": "투자위험등급",
+                        "fund_fees.선취수수료": "선취수수료"
                     }
-                    applied_filters[label_map[key]] = f"{op} {val}"
+
+                    applied_filters[label_map.get(key, key)] = f"{op} {val}"
 
         # 키워드(펀드명) 필터
         if keyword:
@@ -190,14 +366,11 @@ def recommend():
             params.append(f'%{keyword}%')
 
         query += f" ORDER BY {sort_column}"
-
         df = run_query(query, params)
         funds = df.to_dict(orient='records')
 
-        
         risk_text = risk_label(risk_preference) if risk_preference else None
 
-        # result.html에 preselected_themes, preselected_risk 전달
         return render_template(
             'result.html',
             funds=funds,
@@ -205,7 +378,9 @@ def recommend():
             preselected_risk=risk_preference,
             risk_text=risk_text,
             theme_keywords=theme_keywords,
-            applied_filters=applied_filters  # 화면 표시용 필터 전달
+            applied_filters=applied_filters,
+            customer_cluster_value=customer_cluster_value,
+            consumption_cluster_value=consumption_cluster_value
         )
 
     except Exception as e:
