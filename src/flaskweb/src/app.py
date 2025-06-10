@@ -336,6 +336,9 @@ def recommend():
 
                 # 성과, 위험, 수수료 등만 쿼리 필터로 추가
                 if key in filter_fields:
+                    if key == "fund_risk_grades.투자위험등급":
+                        applied_filters[label_map.get(key, key)] = f"{op} {val}"
+                        continue  # 쿼리에는 추가하지 않음
                     sql_field = filter_fields[key]
                     if op == "==":
                         query += f" AND {sql_field} = ?"
