@@ -1,0 +1,170 @@
+# app-without-job.yaml: Job 제외한 애플리케이션 리소스들
+
+---
+# 공통 ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pr1sm-config
+data:
+  MB_DB_TYPE: "postgres"
+  MB_DB_DBNAME: "metabase"
+  MB_DB_PORT: "5432"
+  MB_DB_USER: "metabase"
+  MB_DB_HOST: "postgres"
+  MB_SITE_URL: "https://dashboard.pr1sm.cloud"
+  FLASK_ENV: "development"
+---
+# Metabase 플러그인을 저장할 영구 볼륨 요청(PVC)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: metabase-plugins-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# PostgreSQL StatefulSet 및 Service
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres
+spec:
+  serviceName: "postgres"
+  replicas: 1
+  selector: { matchLabels: { app: postgres } }
+  template:
+    metadata: { labels: { app: postgres } }
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_DB
+          valueFrom: { configMapKeyRef: { name: pr1sm-config, key: MB_DB_DBNAME } }
+        - name: POSTGRES_USER
+          valueFrom: { configMapKeyRef: { name: pr1sm-config, key: MB_DB_USER } }
+        - name: POSTGRES_PASSWORD
+          valueFrom: { secretKeyRef: { name: pr1sm-secrets, key: postgres-password } }
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+          subPath: pgdata
+        readinessProbe:
+          exec: { command: ["pg_isready", "-U", "metabase"] }
+          initialDelaySeconds: 10
+          periodSeconds: 5
+  volumeClaimTemplates:
+  - metadata: { name: postgres-storage }
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources: { requests: { storage: 4Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  ports:
+  - port: 5432
+  selector:
+    app: postgres
+  clusterIP: None
+---
+# Flask Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pr1sm-flask
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: pr1sm-flask } }
+  template:
+    metadata: { labels: { app: pr1sm-flask } }
+    spec:
+      containers:
+      - name: pr1sm-flask
+        image: vitaje/pr1sm-flask:latest
+        ports:
+        - containerPort: 5000
+        envFrom:
+        - secretRef: { name: flask-app-secrets }
+        env:
+        - name: FLASK_ENV
+          valueFrom: { configMapKeyRef: { name: pr1sm-config, key: FLASK_ENV } }
+        volumeMounts:
+        - name: local-db-storage
+          mountPath: /app/local_app.db
+          subPath: local_app.db
+          readOnly: true
+      volumes:
+      - name: local-db-storage
+        persistentVolumeClaim: { claimName: local-db-pvc }
+---
+# Flask Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: pr1sm-flask-service
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 5000
+    targetPort: 5000
+  selector:
+    app: pr1sm-flask
+---
+# Metabase Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: metabase
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: metabase } }
+  template:
+    metadata: { labels: { app: metabase } }
+    spec:
+      containers:
+      - name: metabase
+        image: vitaje/pr1sm-metabase:latest
+        ports:
+        - containerPort: 3000
+        envFrom:
+        - configMapRef: { name: pr1sm-config }
+        env:
+        - name: MB_DB_PASS
+          valueFrom: { secretKeyRef: { name: pr1sm-secrets, key: postgres-password } }
+        - name: MB_EMBEDDING_SECRET_KEY
+          valueFrom: { secretKeyRef: { name: pr1sm-secrets, key: metabase-secret-key } }
+        volumeMounts:
+        - name: metabase-plugins
+          mountPath: /plugins
+        - name: local-db-storage
+          mountPath: /local_app.db
+          subPath: local_app.db
+          readOnly: true
+      volumes:
+      - name: metabase-plugins
+        persistentVolumeClaim: { claimName: metabase-plugins-pvc }
+      - name: local-db-storage
+        persistentVolumeClaim: { claimName: local-db-pvc }
+---
+# Metabase Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: metabase-service
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 3000
+    targetPort: 3000
+  selector:
+    app: metabase 

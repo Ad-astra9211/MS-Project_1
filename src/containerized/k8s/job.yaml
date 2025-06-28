@@ -1,0 +1,78 @@
+# job-only.yaml: 데이터베이스 파일 다운로드 Job만 포함
+
+---
+# local_app.db를 저장할 영구 볼륨 요청(PVC)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: local-db-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+# 디렉토리 정리 및 파일 다운로드 Job
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-initializer-job
+spec:
+  completions: 1          # 1번 성공하면 완료
+  parallelism: 1          # 동시 실행 Pod 수
+  template:
+    spec:
+      containers:
+      - name: downloader
+        image: wernight/gdown # gdown이 사전 설치된 이미지 사용
+        envFrom:
+        - secretRef: { name: flask-app-secrets }
+        command: ["/bin/bash", "-c"]
+        args:
+          - |
+            set -e
+            echo "=== Google Drive 대용량 파일 다운로드 시작 (gdown 사용) ==="
+            
+            FILE_ID="${GOOGLE_DRIVE_FILE_ID}"
+            OUTPUT_DIR="/data"
+            OUTPUT_FILE="${OUTPUT_DIR}/local_app.db"
+            
+            echo "파일 ID: ${FILE_ID}"
+            echo "출력 파일: ${OUTPUT_FILE}"
+            
+            echo "=== 디스크 공간 확인 ==="
+            df -h "${OUTPUT_DIR}"
+            
+            # 이미 유효한 파일이 존재하는지 확인 (2GB 이상)
+            if [ -f "${OUTPUT_FILE}" ] && [ $(stat -c%s "${OUTPUT_FILE}") -gt 2000000000 ]; then
+              echo "유효한 local_app.db 파일이 이미 존재합니다 (크기: $(stat -c%s "${OUTPUT_FILE}") bytes)"
+              echo "다운로드를 건너뜁니다."
+              exit 0
+            fi
+            
+            echo "=== gdown으로 다운로드 시작 ==="
+            gdown --id "${FILE_ID}" -O "${OUTPUT_FILE}" --no-cookies --no-check-certificate
+            
+            if [ $? -eq 0 ] && [ -s "${OUTPUT_FILE}" ]; then
+              echo "다운로드 성공!"
+              ls -lh "${OUTPUT_FILE}"
+              chmod 644 "${OUTPUT_FILE}"
+              echo "파일 권한 설정 완료."
+            else
+              echo "다운로드 실패!"
+              exit 1
+            fi
+            
+            echo "최종 상태:"
+            ls -lah "${OUTPUT_DIR}"
+            df -h "${OUTPUT_DIR}"
+        volumeMounts:
+        - name: db-storage
+          mountPath: /data
+      restartPolicy: OnFailure  # 실패시에만 재시작
+      volumes:
+      - name: db-storage
+        persistentVolumeClaim:
+          claimName: local-db-pvc
+  backoffLimit: 2  # 최대 2번 재시도 

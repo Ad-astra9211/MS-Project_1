@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>펀드 추천 시스템</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='result_style.css') }}">
+</head>
+<body>
+  <a href="/" class="home-btn">home</a>
+  <div class="container mt-5">
+    <h2 class="mb-4">펀드 추천 결과 (상위 30개)</h2>
+
+    <!-- [추가] 클러스터 필터 적용값 표시 -->
+  <div class="mb-4">
+    <strong>회원 맞춤 조건(클러스터 필터):</strong>
+    <div class="mt-2">
+      <!-- 클러스터 값 표시 -->
+      <span class="badge bg-primary text-light me-2 custom-filter-badge">
+        클러스터: {{ customer_cluster_value }}
+      </span>
+      <span class="badge bg-secondary text-light me-2 custom-filter-badge">
+        소비유형: {{ consumption_cluster_value }}
+      </span>
+      <!-- 기존 applied_filters 표시 -->
+      {% if applied_filters %}
+        {% for key, value in applied_filters.items() %}
+          <span class="badge bg-info text-dark me-2 custom-filter-badge">{{ key }} {{ value }}</span>
+        {% endfor %}
+      {% else %}
+        <span class="text-muted">적용된 필터 없음</span>
+      {% endif %}
+    </div>
+  </div>
+
+    <!-- 검색창 -->
+    <div class="mb-3">
+      <input type="text" id="searchInput" class="form-control" placeholder="펀드명을 검색하세요...">
+    </div>
+
+    <!-- 테마 필터 버튼 -->
+    <div class="mb-4">
+      <strong>테마 필터: (추천받은 테마에 펀드상품이 적다면 테마를 조정해주세요.)</strong><br>
+      <div id="keywordButtons" class="d-flex flex-wrap gap-2 mt-2"></div>
+    </div>
+
+    <!-- 위험등급 필터 -->
+    <div class="mb-4 d-flex align-items-center gap-3 flex-wrap">
+  <div>
+    <strong>위험 선호도:</strong>
+    <select id="riskSelect" class="form-select d-inline-block" style="width:140px; display:inline-block;">
+      <option value="">전체</option>
+      <option value="1" {% if preselected_risk == 1 %}selected{% endif %}>1 (매우 공격적)</option>
+      <option value="2" {% if preselected_risk == 2 %}selected{% endif %}>2</option>
+      <option value="3" {% if preselected_risk == 3 %}selected{% endif %}>3</option>
+      <option value="4" {% if preselected_risk == 4 %}selected{% endif %}>4</option>
+      <option value="5" {% if preselected_risk == 5 %}selected{% endif %}>5</option>
+      <option value="6" {% if preselected_risk == 6 %}selected{% endif %}>6 (매우 안정적)</option>
+    </select>
+  </div>
+  <div class="text-primary small fw-semibold" style="min-width:220px;">
+    {% if risk_text %}
+      회원의 추천 위험도: <strong>{{ risk_text }}</strong>
+      <span class="text-secondary">(1에 가까울수록 위험)</span>
+    {% else %}
+      <span class="text-secondary">위험도를 선택해주세요.</span>
+    {% endif %}
+  </div>
+</div>
+
+    <!-- 정렬 버튼 -->
+    <div class="mb-4">
+      <button id="sortReturnBtn" class="btn btn-outline-primary" onclick="sortBy('return')">수익률순 정렬</button>
+      <button id="sortRiskBtn" class="btn btn-outline-secondary" onclick="sortBy('risk')">위험등급순 정렬</button>
+    </div>
+
+    <!-- 펀드 카드 리스트 -->
+    <div id="fundCards" class="row"></div>
+  </div>
+  <!-- Footer 시작 -->
+  <footer class="site-footer">
+  <div class="footer-logo-wrap">
+    <img src="/static/img/pr1sm_logo.png" alt="PR1SM 기업 로고" class="footer-logo-img">
+    <div class="footer-corp">© 2025 PR1SM Analytics</div>
+  </div>
+  </footer>
+
+  <script>
+    // 서버에서 전달된 데이터
+    const funds = {{ funds | tojson }};
+    let filteredFunds = [...funds];
+    let activeKeywords = {{ preselected_themes | tojson }};
+    let currentRisk = "{{ preselected_risk }}";
+    let userRisk = "{{ preselected_risk }}";
+    const keywords = {{ theme_keywords | tojson }};
+
+    // console.log('preselected_risk:', currentRisk);
+
+    // 키워드 버튼 동적 생성 + preselected 적용
+    const keywordButtonsContainer = document.getElementById('keywordButtons');
+    keywords.forEach(k => {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-outline-dark btn-sm';
+      btn.textContent = k;
+      btn.setAttribute('data-keyword', k);
+      if (activeKeywords && activeKeywords.includes(k)) {
+        btn.classList.add('active');
+      }
+      btn.onclick = function () {
+        const keyword = this.getAttribute('data-keyword');
+        if (activeKeywords.includes(keyword)) {
+          activeKeywords = activeKeywords.filter(kw => kw !== keyword);
+          this.classList.remove('active');
+        } else {
+          activeKeywords.push(keyword);
+          this.classList.add('active');
+        }
+        filterAndRender();
+      };
+      keywordButtonsContainer.appendChild(btn);
+    });
+
+    // 위험등급 select 박스 preselected 적용
+    document.getElementById('riskSelect').value = currentRisk || "";
+
+    // 위험등급 select 변경 시 필터 적용
+    document.getElementById('riskSelect').addEventListener('change', function () {
+      currentRisk = this.value;
+      filterAndRender();
+    });
+
+    // 검색 + 키워드 필터 + 위험등급 + 정렬 통합 필터 함수
+    function filterAndRender() {
+      const keyword = document.getElementById('searchInput').value.toLowerCase();
+      filteredFunds = funds.filter(fund => {
+        const nameMatch = fund['펀드명'].toLowerCase().includes(keyword);
+        const keywordMatch = !activeKeywords.length || activeKeywords.some(k => fund[k] === 1);
+        const riskMatch = !currentRisk || fund['투자위험등급'] >= currentRisk;
+        return nameMatch && keywordMatch && riskMatch;
+      });
+      renderCards(filteredFunds);
+    }
+
+    // 검색 input 리스너
+    document.getElementById('searchInput').addEventListener('input', filterAndRender);
+
+    let currentSort = 'return';
+
+    // 정렬 함수
+    function sortBy(criteria) {
+      currentSort = criteria;
+      document.getElementById('sortReturnBtn').classList.remove('active');
+      document.getElementById('sortRiskBtn').classList.remove('active');
+      if (criteria === 'return') {
+        document.getElementById('sortReturnBtn').classList.add('active');
+        filteredFunds.sort((a, b) => a['추천랭킹'] - b['추천랭킹']);
+      } else if (criteria === 'risk') {
+        document.getElementById('sortRiskBtn').classList.add('active');
+        filteredFunds.sort((a, b) => a['투자위험등급'] - b['투자위험등급']);
+      }
+      renderCards(filteredFunds);
+    }
+
+    window.onload = function() {
+      document.getElementById('sortReturnBtn').classList.add('active');
+      filterAndRender();
+    };
+
+    // 카드 렌더링 함수
+    function renderCards(data) {
+      const container = document.getElementById('fundCards');
+      container.innerHTML = '';
+      data.slice(0, 30).forEach(fund => {
+        const col = document.createElement('div');
+        col.className = 'col-12 mb-3';
+        col.innerHTML = `
+          <div class="card p-3">
+            <div class="card-body">
+              <h5 class="card-title">
+                <a href="/fund/${fund['펀드코드']}">${fund['펀드명']}</a>
+              </h5>
+              <p class="card-text">
+                <span class="badge bg-success">1년 수익률: ${fund['펀드성과정보_1년']}%</span><br>
+                <span class="badge bg-rank">펀드점수: ${fund['최종점수']}</span><br>
+                <span class="badge bg-rank">펀드랭킹: ${fund['추천랭킹']}</span><br>
+                <span class="badge bg-warning text-dark">위험등급: ${fund['투자위험등급']}</span><br>
+                <small>운용사: ${fund['운용사명']}</small>
+              </p>
+            </div>
+          </div>`;
+        container.appendChild(col);
+      });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+# 환경 변수 파일들
+.env
+env.example
+
+# Git 관련
+.git
+.gitignore
+
+# macOS 파일
+.DS_Store
+
+# Kubernetes 관련 파일들 (Docker 이미지에 불필요)
+k8s/
+*.yaml
+*.yml
+
+# 빌드 스크립트들
+build-and-push*.sh
+
+# Docker 관련
+docker-compose*.yaml
+Dockerfile*
+
+# 문서 파일들
+README.md
+*-readme.md
+
+# 대용량 데이터베이스 파일
+local_app.db
+
+# PostgreSQL 데이터 디렉토리
+postgres_data/

@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: metabase_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: metabase
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    env_file:
+      - .env
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  metabase:
+    build:
+      context: .
+      dockerfile: Dockerfile.metabase
+    container_name: metabase
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      MB_EMBEDDING_SECRET_KEY: ${MB_EMBEDDING_SECRET_KEY}
+      MB_SITE_URL: "https://dashboard.pr1sm.cloud"
+      MB_DB_TYPE: postgres
+      MB_DB_DBNAME: metabase
+      MB_DB_PORT: 5432
+      MB_DB_USER: ${POSTGRES_USER}
+      MB_DB_PASS: ${POSTGRES_PASSWORD}
+      MB_DB_HOST: postgres
+    env_file:
+      - .env
+    volumes:
+      - ./local_app.db:/local_app.db:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  pr1sm_flask:
+    build:
+      context: .
+      dockerfile: Dockerfile.pr1sm_flask
+    container_name: pr1sm_flask
+    restart: always
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app
+      - ./local_app.db:/app/local_app.db:ro

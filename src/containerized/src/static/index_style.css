@@ -1,0 +1,293 @@
+body {
+  background: #f6f8fa;
+  font-family: 'Noto Sans KR', 'Apple SD Gothic Neo', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  color: #222;
+}
+
+/* 헤더 바 */
+.main-header {
+  width: 100%;
+  max-width: 100vw;
+  box-sizing: border-box;
+  background: #fff;
+  box-shadow: 0 2px 12px rgba(94,114,228,0.07);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 40px;
+  height: 86px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.logo-icon {
+  font-size: 2rem;
+  color: #5e72e4;
+}
+
+.logo-text {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #34495e;
+}
+
+.header-right {
+  display: flex;
+  gap: 14px;
+}
+
+.btn-dashboard {
+  background: linear-gradient(90deg, #5e72e4 0%, #825ee4 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.08rem;
+  border: none;
+  border-radius: 32px;
+  padding: 10px 28px;
+  box-shadow: 0 4px 18px rgba(94, 114, 228, 0.08);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+  letter-spacing: 0.02em;
+  outline: none;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-dashboard:hover, .btn-dashboard:focus {
+  background: linear-gradient(90deg, #825ee4 0%, #5e72e4 100%);
+  box-shadow: 0 8px 24px rgba(130, 94, 228, 0.13);
+  transform: translateY(-2px) scale(1.04);
+  color: #fff;
+}
+
+main {
+  margin-top: 36px;
+}
+
+.container {
+  margin: 80px auto 0 auto;
+  max-width: 420px;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(60,60,100,0.09);
+  padding: 2.5rem 2rem 2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* 중앙 정렬 */
+}
+.recommend-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* 중앙 정렬 */
+  gap: 1.5rem;
+}
+.form-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* 중앙 정렬 */
+  gap: 1.5rem;
+}
+
+h1 {
+  color: #5e72e4;
+  font-weight: 800;
+  font-size: 2.1rem;
+  margin-bottom: 34px;
+  letter-spacing: -0.01em;
+}
+
+.form-section {
+  text-align: left;
+}
+
+label {
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 6px;
+  font-size: 1.08rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+select {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid #d1d5db;
+  font-size: 1.08rem;
+  margin-top: 6px;
+  outline: none;
+  background: #f8fafc;
+  transition: border-color 0.3s, box-shadow 0.3s;
+  box-shadow: 0 1px 4px rgba(130,94,228,0.04) inset;
+}
+
+select:focus {
+  border-color: #825ee4;
+  box-shadow: 0 0 8px rgba(130,94,228,0.11);
+}
+
+.btn.btn-recommend {
+  padding: 14px 0;
+  border: none;
+  border-radius: 30px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 18px;
+  transition: background-color 0.3s, box-shadow 0.3s;
+  width: 100%;
+  display: block;
+  background: #28a745;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn.btn-recommend:hover {
+  background: #1e7e34;
+  box-shadow: 0 6px 20px rgba(30, 126, 52, 0.16);
+}
+
+.btn.dashboard-custom1 {
+  position: fixed;
+  top: 10px;
+  right: 220px; 
+  z-index: 6000;
+  font-size: 0.9rem;
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+  background: linear-gradient(90deg, #5e72e4, #825ee4);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  gap: 6px;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+
+.btn.dashboard-custom1:hover {
+  background: linear-gradient(90deg, #825ee4, #5e72e4);
+  box-shadow: 0 6px 20px rgba(130, 94, 228, 0.2);
+  transform: translateY(-2px);
+}
+
+.btn.dashboard-custom2 {
+  position: fixed;
+  top: 10px;
+  right: 20px;
+  z-index: 6000;
+  font-size: 0.9rem;
+  padding: 8px 16px;
+  border-radius: 20px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+  background: linear-gradient(90deg, #5e72e4, #825ee4);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  gap: 6px;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+}
+
+.btn.dashboard-custom2:hover {
+  background: linear-gradient(90deg, #825ee4, #5e72e4);
+  box-shadow: 0 6px 20px rgba(130, 94, 228, 0.2);
+  transform: translateY(-2px);
+}
+
+.sample-note {
+  margin: 28px auto 0 auto;
+  max-width: 420px;
+  background: linear-gradient(120deg, #f3f6ff 70%, #f8f7fc 100%);
+  border: 1.5px solid #c6d4fa;
+  border-radius: 14px;
+  box-shadow: 0 2px 14px rgba(94, 114, 228, 0.07);
+  padding: 1.3em 1.4em 1.1em 1.4em;
+  font-family: 'Consolas', 'Nanum Gothic Coding', 'Pretendard', 'Noto Sans KR', monospace, sans-serif;
+  color: #4157a7;
+  font-size: 1.03rem;
+  white-space: pre-line;
+  line-height: 1.65;
+  letter-spacing: 0.01em;
+  position: relative;
+}
+.sample-note::before {
+  content: "\f303";
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  color: #5e72e4;
+  font-size: 1.1em;
+  position: absolute;
+  left: 1.15em;
+  top: 1.1em;
+  opacity: 0.8;
+}
+
+.site-footer {
+  margin-top: 48px;
+  padding: 28px 0 18px 0;
+  background: #f7f8fa;
+  border-top: 1.5px solid #e6e9f2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.footer-logo-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.footer-logo-img {
+  width: 90px;            
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 8px rgba(94,114,228,0.10));
+  margin-bottom: 6px;
+  margin-top: 2px;
+  transition: transform 0.18s;
+}
+.footer-logo-img:hover {
+  transform: scale(1.06) rotate(-2deg);
+  filter: drop-shadow(0 4px 16px rgba(94,114,228,0.18));
+}
+.footer-corp {
+  font-size: 1.01rem;
+  color: #7c88a1;
+  letter-spacing: 0.02em;
+  font-weight: 500;
+  margin-top: 2px;
+}
+@media (max-width: 600px) {
+  .site-footer {
+    padding: 18px 0 10px 0;
+  }
+  .footer-logo-img {
+    width: 56px;
+  }
+  .footer-corp {
+    font-size: 0.97rem;
+  }
+}
