@@ -4,12 +4,28 @@
 
 ---
 
+
 ##  프로젝트 개요
 
 - **프로젝트명**: 카드 소비 데이터 분석을 통한 고객 맞춤형 펀드 추천 시스템 개발  
 - **프로젝트 기간**: 2025.05.26 ~ 2025.06.10  
 - **기술 스택**:  
   `Azure Databricks (Spark)`, `PySpark`, `Flask`, `SQL`, `Pandas`, `Chart.js`, `HTML/CSS`
+
+---
+
+##  팀 구성 및 역할
+
+<img src="https://github.com/Ad-astra9211/MS-Project_1/blob/main/readme_gif/1%20%EB%A1%9C%EA%B3%A0.gif">
+
+| 이름 | 담당 역할 |
+|------|-----------|
+| [mok010](https://github.com/mok010) |  Data Scientist |
+| [Ad-astra9211](https://github.com/Ad-astra9211) |  Data Engineer |
+| [Happybin72](https://github.com/Happybin72) | Project Leader |
+| [vitaje](https://github.com/vitaje) |  Project Manager |
+| [saltedsugar1117](https://github.com/saltedsugar1117) | Data Scientist |
+| [손아현] | Service Architecture |
 
 ---
 
@@ -24,6 +40,10 @@
 ---
 
 ##  고객 클러스터링 기반 맞춤 추천
+
+<img src="https://github.com/Ad-astra9211/MS-Project_1/blob/main/readme_gif/2%20%EC%83%98%ED%94%8C%EC%BD%94%EB%93%9C.gif">
+<img src="https://github.com/Ad-astra9211/MS-Project_1/blob/main/readme_gif/3%20%EC%B6%94%EC%B2%9C%20%EC%84%B8%EB%B6%80.gif">
+<img src="https://github.com/Ad-astra9211/MS-Project_1/blob/main/readme_gif/%ED%81%B4%EB%9F%AC%EC%8A%A4%ED%84%B0%EB%A7%81.png">
 
 - 카드 소비 및 금융 행동 데이터를 바탕으로 KMeans 등의 클러스터링 기법을 사용
 - `member_code`를 입력받아 해당 고객의 클러스터 정보 확인
@@ -85,6 +105,8 @@ cluster_fund_filter_conditions = {
 
 ### 1️. 내부 대시보드 `/dashboard`
 
+<img src="https://github.com/Ad-astra9211/MS-Project_1/blob/main/readme_gif/4%20%EB%8C%80%EC%8B%9C%EB%B3%B4%EB%93%9C1.gif">
+
 - Chart.js 기반 시각화
 - 주요 지표:
   - 월별 신규 펀드 설정 수
@@ -93,6 +115,8 @@ cluster_fund_filter_conditions = {
   - 사용자 펀드 이용 통계 등
 
 ### 2️. 외부 대시보드 `/db_dash`
+
+<img src="https://github.com/Ad-astra9211/MS-Project_1/blob/main/readme_gif/5%20%EB%8C%80%EC%8B%9C%EB%B3%B4%EB%93%9C2.gif">
 
 - Databricks에서 만든 BI 대시보드 iframe 임베딩
 - Azure 인증 필요
