@@ -133,7 +133,7 @@ def databricks_dashboard():
 ---
 
 ##  더 자세한 구현 설명
-https://star-ccomputer-go.tistory.com/168
+https://star-ccomputer-go.tistory.com/category/Data/%EC%B9%B4%EB%93%9C%EC%86%8C%EB%B9%84%EB%8D%B0%EC%9D%B4%ED%84%B0%20%EB%B6%84%EC%84%9D%20%EA%B3%A0%EA%B0%9D%20%EB%A7%9E%EC%B6%A4%ED%98%95%20%ED%8E%80%EB%93%9C%EC%B6%94%EC%B2%9C%EC%8B%9C%EC%8A%A4%ED%85%9C
 
 환경에 맞게 수정만 하면 작동. 
 /src/containerized 안에 push, docker-readme.md, k8s-readme.md에 간단하게 가이드라인 有
