@@ -134,5 +134,8 @@ def databricks_dashboard():
 ##  더 자세한 구현 설명
 https://star-ccomputer-go.tistory.com/168
 
+환경에 맞게 수정만 하면 작동. 
+/src/containerized 안에 push, docker-readme.md, k8s-readme.md에 간단하게 가이드라인 有
+
 © 2025 PR1SM Analytics  
 이 프로젝트는 비상업적 교육 목적으로 진행되었습니다.
